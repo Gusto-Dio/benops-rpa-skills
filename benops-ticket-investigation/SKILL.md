@@ -5,6 +5,10 @@ description: Use when a BenOps RPA process is failing in Production and a bug ti
 
 # BenOps Ticket Investigation
 
+## Output Language
+
+**Always respond in English**, regardless of the language used in the conversation.
+
 ## Overview
 
 Structured investigation workflow for BenOps RPA production failures. The core principle: **Orchestrator logs are ground truth — code analysis without logs first produces wrong root causes.** The baseline failure mode is jumping straight to XAML and guessing.
