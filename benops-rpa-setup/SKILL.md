@@ -111,6 +111,20 @@ claude plugins install eng-performance-reviews@usp-shared
 claude plugins install permission-audit@usp-shared
 ```
 
+> **Troubleshooting — plugin not found in catalog**
+>
+> If `claude plugins install eng-performance-reviews@usp-shared` (or any other plugin) fails with "not found in catalog", use `--plugin-dir` pointing to the locally cached marketplace directory:
+>
+> ```powershell
+> claude plugins install --plugin-dir "$env:USERPROFILE\.claude\plugins\marketplaces\usp-shared\plugins\eng-performance-reviews"
+> ```
+>
+> The general pattern for any plugin from a marketplace is:
+> ```
+> ~\.claude\plugins\marketplaces\<marketplace-name>\plugins\<plugin-name>
+> ```
+> Run `ls "$env:USERPROFILE\.claude\plugins\marketplaces"` to see which marketplaces are available locally.
+
 **settings.json — MCP permissions:**
 Add the `permissions.allow` block to `~/.claude/settings.json`:
 
