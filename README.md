@@ -10,8 +10,8 @@ Each skill lives in its own subfolder. The folder name is the skill name.
 benops-rpa-skills/
 ├── benops-rpa-setup/
 │   └── SKILL.md          # VDI setup for new team members
-└── <future-skill>/
-    └── SKILL.md
+└── benops-ticket-investigation/
+    └── SKILL.md          # Structured investigation for production failures
 ```
 
 ## Installing a skill
@@ -30,6 +30,7 @@ Then open Claude Code and type `/<skill-name>` to invoke it.
 | Skill | Description | Invoke |
 |---|---|---|
 | `benops-rpa-setup` | Interactive VDI setup for new BenOps RPA team members — installs tools, plugins, and configures MCPs | `/benops-rpa-setup` |
+| `benops-ticket-investigation` | Structured investigation workflow for production failures — enforces Orchestrator logs before XAML code analysis | `/benops-ticket-investigation` |
 
 ## Adding a new skill
 
