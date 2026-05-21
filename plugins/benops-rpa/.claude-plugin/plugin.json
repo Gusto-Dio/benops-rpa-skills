@@ -1,12 +1,12 @@
 {
   "name": "benops-rpa",
   "description": "Claude Code skills for the BenOps RPA team at Gusto",
-  "version": "1.1.1",
+  "version": "1.2.0",
   "pages": {
     "icon": "#",
     "features": [
       "Daily briefing, triage, and sync workflows for BenOps RPA engineers",
-      "Ticket investigation with Orchestrator log analysis",
+      "Ticket investigation with Orchestrator log analysis and automatic Sheets tracking update",
       "Status updates via Slack, Notion sync, and test case creation"
     ],
     "components": [
@@ -31,7 +31,7 @@
       {
         "type": "skill",
         "name": "benops-ticket-investigation",
-        "description": "Structured investigation for BenOps RPA production failures — Orchestrator logs first",
+        "description": "Structured investigation for BenOps RPA production failures — marks ticket In Progress in Sheets, then pulls Orchestrator logs",
         "mcp": []
       },
       {
