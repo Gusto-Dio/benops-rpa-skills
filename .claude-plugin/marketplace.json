@@ -1,16 +1,15 @@
 {
   "name": "benops-rpa-skills",
+  "version": "1.0.0",
   "description": "BenOps RPA skills for the Gusto BizTech RPA team",
   "owner": {
-    "name": "Diogenes Ribeiro",
-    "email": "diogenes.ribeiro@gusto.com",
-    "github": "Gusto-Dio"
+    "name": "Diogenes Ribeiro"
   },
   "plugins": [
     {
       "name": "benops-rpa",
       "description": "Daily ops, ticket investigation, and automation workflows for BenOps RPA",
-      "path": "plugins/benops-rpa"
+      "source": "./plugins/benops-rpa"
     }
   ]
 }
