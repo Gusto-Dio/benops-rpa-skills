@@ -1,0 +1,277 @@
+# Claude Code — BenOps RPA Project Instructions
+
+> **Before use:** Replace every `[PLACEHOLDER]` value before saving this as your `CLAUDE.md`.
+> Required placeholders: `[YOUR_NAME]`, `[your.name@gusto.com]`, `[@your-handle]`,
+> `[Portuguese / English / other]`, `[CONTACT_1]`, `[CONTACT_2]`, `[MEMORY_PATH]`,
+> `[YOUR_CARRIER]`, `[YOUR_PROCESS]`, `[PATH]`.
+> Leaving any placeholder unfilled causes Claude to use wrong names, skip priority contacts,
+> and fail to load session memory.
+
+## About Me
+- Name: [YOUR_NAME]
+- Role: RPA Engineer, BizTech team at Gusto
+- Email: [your.name@gusto.com]
+- Slack handle: [@your-handle]
+- Primary work: UiPath RPA automations for HR/benefits carrier integrations
+- Technical level: senior developer — skip basic explanations
+
+## Language Rules
+- **Our conversation**: [Portuguese / English / other]
+- **Slack messages** (sent via tool): English
+- **Git commits, PR titles/bodies**: English
+- **Jira comments and updates**: English
+- **Code, selectors, activity names, branch names**: English (always)
+
+## Priority Contacts
+When analyzing Slack, Jira, PRs, or any communication, these people have top priority:
+- [CONTACT_1] — check their messages, tickets, and requests first
+- [CONTACT_2] — check their messages, tickets, and requests first
+
+If any of them mentioned my name, commented on one of my PRs, assigned a ticket to me,
+or shared something requiring my validation — that goes to the top of the day's priority list.
+
+---
+
+## Session Continuity (MANDATORY at session start)
+
+At the start of every session, BEFORE responding to anything, run these steps:
+
+1. Check if `[MEMORY_PATH]/MEMORY.md` exists
+   - If YES: read it — it is the index of all saved memories
+   - If NO: create the memory directory and initialize `MEMORY.md` with an empty index header
+2. Check if `[MEMORY_PATH]/work_state.md` exists
+   - If YES: read it — it contains all open PRs, in-progress work, and pending items
+   - If NO: create it with this blank template:
+     ```markdown
+     # Work State
+     ## Open PRs
+     ## In Progress
+     ## Pending
+     ```
+3. Identify all items marked **PENDING** in memories and surface them at session start
+4. Only after these steps: respond or act
+
+> **How to find your MEMORY_PATH:** The path follows this exact pattern — replace `YOUR_USERNAME`
+> with your Windows username (e.g., `jsmith_gusto`):
+> `C:\Users\YOUR_USERNAME\.claude\projects\C--Users-YOUR_USERNAME-Documents-Projects-biztech-uipath-rpa\memory`
+> If the folder does not exist yet, Claude will create it automatically on first session.
+
+---
+
+## General Rules (apply to every session)
+- Always run `git branch` before editing any file — confirm you are on a feature branch
+- Fix root cause, not symptoms
+- Do not add features, refactors, or abstractions beyond what the task requires
+- Confirm before any destructive or irreversible action
+- **Never stage or commit `CLAUDE.md` or `.claude/`** — the working `CLAUDE.md` at the repo root
+  is personal config and must never be pushed. This template (`templates/CLAUDE.md.template`) is the
+  exception — it lives in the skills repo and IS versioned in git.
+
+---
+
+## XAML Edit Protocol — NON-NEGOTIABLE
+Before editing ANY `.xaml` file, two steps are mandatory prerequisites with no exceptions:
+1. Run `git branch` — confirm you are NOT on `develop`
+2. Invoke `uipath:uipath-rpa` skill — required before the first XAML edit of the session
+
+A hook enforces rule 1 at the tool level (blocks edits on `develop`). Rule 2 is enforced by
+this instruction — there is no rationalization that skips it.
+
+---
+
+## Library Rules — NON-NEGOTIABLE
+- **Never edit files under `Libraries/`** to fix a process-specific bug
+- Libraries are shared across all processes — a change there affects every bot
+- Fix infrastructure issues (Python PATH, pwsh, etc.) on the VM, not in Library XAML
+
+---
+
+## Activity Type Verification — CRITICAL
+- Never add an activity type (`ui:SomeActivity`) that does not already exist in the file or project
+- Before adding any new activity, verify it exists in the codebase:
+  ```powershell
+  Select-String -Path ".\**\*.xaml" -Pattern "ui:ActivityName" -Recurse
+  ```
+- If the activity type is not found: stop and ask before proceeding
+
+---
+
+## Git Rules
+- Never commit directly to `develop`
+- Never skip hooks (`--no-verify`)
+- Branch naming: `BT-XXXXX-CarrierName-ProcessType-brief-description`
+- Commit message format:
+  ```
+  [BT-XXXXX] Action: brief description
+
+  - Specific change
+  - Another change
+  ```
+- If VIM opens during merge: `:wq` to save and continue, `:q!` to abort
+- Recommended: set Notepad as git editor to avoid VIM: `git config --global core.editor "notepad"`
+
+---
+
+## Buildkite Rule — MANDATORY before any PR
+
+Always run before push/PR:
+```powershell
+git fetch origin develop
+git diff origin/develop..HEAD --name-only
+```
+
+If any file outside the ticket scope appears → merge develop first:
+```powershell
+git merge origin/develop --no-edit
+git push
+```
+
+**Why this matters:** Buildkite uses `git diff origin/develop..HEAD` (two dots) to detect
+which processes to validate. With two dots, any process merged into develop *after* the branch
+was created appears in the diff — Buildkite then runs `check_dependency.sh` for each, failing
+on processes that haven't been updated to the current lib version. Merging develop brings the
+branch up to date and makes the diff show only the ticket's files.
+
+---
+
+## Daily Tools
+
+| Tool | Purpose |
+|---|---|
+| Jira | Ticket management (BT-XXXXX format) |
+| Confluence | Process documentation and specs |
+| GitHub | biztech-uipath-rpa repository |
+| Slack | Team communication |
+| UiPath Orchestrator | Bot execution and monitoring |
+| Buildkite | CI/CD pipeline |
+| Google Sheets | Tracking and reporting |
+
+---
+
+## VM Infrastructure
+
+| Component | Location |
+|---|---|
+| Python 3.11 | `C:\Users\YOUR_USERNAME\AppData\Local\Programs\Python\Python311\python.exe` |
+| Python wrapper | `C:\Windows\System32\python.cmd` — must exist for UiPath Robot to find Python |
+| PowerShell Core | `C:\Program Files\PowerShell\7\pwsh.exe` — required by TakeFullPageScreenshot |
+| Studio cache | `{ProcessFolder}\.local\WorkflowFileValidator.cache` |
+
+**Common issues:**
+- Robot can't find Python → check `C:\Windows\System32\python.cmd` exists
+- Studio stuck on "Checking for validation errors" → close Studio, delete `WorkflowFileValidator.cache`, reopen
+- `TakeFullPageScreenshot` fails → verify `pwsh.exe` is installed at path above
+
+---
+
+## Process Paths Reference
+
+| Carrier | Process | Path |
+|---|---|---|
+| BCBS MA | NewHireEnrollment | `Processes/Benefits/CarrierAutomations/MemberSubmission/BCBS_MA/BCBS_MA_NewHireEnrollment/` |
+| BCBS TX | All processes | `Processes/Benefits/CarrierAutomations/MemberSubmission/BCBS_TX/` |
+| Anthem | All processes | `Processes/Benefits/CarrierAutomations/MemberSubmission/Anthem/` |
+| BSCA | All processes | `Processes/Benefits/CarrierAutomations/MemberSubmission/BSCA/` |
+| [YOUR_CARRIER] | [YOUR_PROCESS] | `Processes/Benefits/CarrierAutomations/MemberSubmission/[PATH]/` |
+
+---
+
+## UiPath Activity Quick Reference
+Confirmed present in this project — always verify before using any other type:
+
+| Activity | XAML Tag | Notes |
+|---|---|---|
+| Click | `ui:Click` | Standard click |
+| TypeInto | `ui:TypeInto` | Type into input field |
+| UiElementExists | `ui:UiElementExists` | Returns Boolean, use for waits/checks |
+| GetText | `ui:GetText` | Extract visible text |
+| SelectItem | `ui:SelectItem` | Standard dropdown selection |
+
+---
+
+## Variable & Argument Naming
+- Arguments: PascalCase with direction prefix — `in_Gender`, `out_Result`, `io_EmployeeData`
+- Variables: camelCase — `genderValue`, `isDropdownOpen`
+- Workflow files: PascalCase — `EnterEmployeeInformation.xaml`
+
+## Selector Guidelines
+- Use dynamic selectors with arguments where possible: `aaname='{in_EmployeeName}'`
+- Prefer `aria-role` attributes over fragile `idx` or absolute `parentid` selectors
+- Always validate selectors exist in the target page before committing
+
+---
+
+## Available Skills
+
+| Command | Purpose |
+|---|---|
+| `/morning` | Daily briefing — Slack + Jira + GitHub + priority contacts |
+| `/benops-ticket-investigation BT-XXXXX` | Full investigation: Jira + Confluence + Git + root cause |
+| `/analyze` | Review current branch diff for XAML issues and convention violations |
+| `/followup` | Status update for leads — Sheets queue + PRs + Jira |
+| `/benops-sync` | Sync BenOps Notion Hub with current PR and Jira statuses |
+| `/benops-triage-agent` | Automated triage of failing bots from Orchestrator logs |
+| `/uipath-migration-repair` | Diagnose and repair Legacy→Windows migration issues |
+| `/uipath-test-cases-from-ticket` | Generate test cases from a Jira ticket description |
+
+> All skills above require the `benops-rpa` plugin. Without it, none of the commands above will work.
+
+**Install plugin:** `claude plugins install benops-rpa@benops-rpa-skills`
+**Update plugin:** `claude plugins update benops-rpa@benops-rpa-skills`
+
+---
+
+## Pre-PR Checklist
+- [ ] Minimum 2-3 transactions tested in Orchestrator
+- [ ] Transaction IDs documented in PR description
+- [ ] No files under `Libraries/` modified
+- [ ] All new activity types verified to exist in project
+- [ ] Branch is up to date with develop (`git merge origin/develop --no-edit`)
+- [ ] Run `/analyze` before final commit
+
+---
+
+## Pre-Execution Checklist (Orchestrator)
+Before triggering a test transaction, confirm:
+- [ ] Process package published (Studio publish or confirmed on Orchestrator > Packages)
+- [ ] Correct environment selected (Dev/QA — never Prod)
+- [ ] Input queue item populated with correct transaction data (Member ID, SSN, action type)
+- [ ] Robot is available (not running another job)
+- [ ] `python.cmd` exists at `C:\Windows\System32\python.cmd` (if process uses Python)
+- [ ] `pwsh.exe` present at `C:\Program Files\PowerShell\7\pwsh.exe` (if uses TakeFullPageScreenshot)
+- [ ] Studio closed before triggering (avoids file locks on XAML)
+- [ ] Clear any previous failed job output before new run
+
+After execution:
+- [ ] Copy Transaction ID from Orchestrator output
+- [ ] Confirm target carrier portal reflects the change
+- [ ] Document result in PR description table
+
+---
+
+## PR Structure
+
+**Title:** `[BT-XXXXX] CarrierName ProcessType — Fix/Feature Description`
+
+**Body:**
+```markdown
+## Summary
+- What this PR does (2-3 bullets)
+
+## Changes
+- `path/to/File.xaml` — what changed and why
+
+## Test Plan
+- [ ] Tested X transactions in Orchestrator
+- [ ] Verified specific behavior (describe)
+- [ ] No shared Library was modified
+
+## Transactions Tested
+| Transaction ID | Result |
+|---|---|
+| 500RXXXXXXXXXX | ✅ Pass |
+```
+
+---
+
+*Template version: 1.0 · BenOps RPA Team · github.com/Gusto-Dio/benops-rpa-skills*
