@@ -1,6 +1,8 @@
 ---
 name: followup
 description: Send daily status update to Sri/Oscar via Slack. Reads Sheets queue, open PRs, and Jira tickets to compose a concise English update.
+requires_mcp: [jiraconfluencegusto, githubgusto, slackgustoofficialmcp, gsheetsgusto]
+allowed-tools: [mcp__claude_ai_Gsheets_Gusto__fetch, mcp__claude_ai_Github-Gusto__list_pull_requests, mcp__claude_ai_Github-Gusto__pull_request_read, mcp__claude_ai_Jira_Confluence__searchJiraIssuesUsingJql, mcp__claude_ai_Slack_Gusto_Offical__slack_send_message, AskUserQuestion]
 ---
 
 # /followup — Status Update to Sri
