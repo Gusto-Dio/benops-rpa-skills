@@ -4,6 +4,13 @@ All notable changes to this plugin are documented here.
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 Versioning: PATCH for bug fixes, MINOR for new skills, MAJOR for breaking changes.
 
+## [1.1.1] — 2026-05-21
+
+### Fixed
+- `marketplace.json`: changed plugin path key from `path` to `source` (e.g., `"source": "./plugins/benops-rpa"`) — required by Claude Code v2.1.146+ for plugin discovery
+- `marketplace.json`: added `version` field and simplified `owner` to `{ "name": "..." }` matching `usp-shared` pattern
+- `plugin.json`: removed MCP object arrays from `mcp` fields (replaced with `[]`) for compatibility with current Claude Code version
+
 ## [1.1.0] — 2026-05-21
 
 ### Added
