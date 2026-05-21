@@ -1,6 +1,8 @@
 ---
 name: benops-sync
 description: Use to sync the BenOps RPA Hub Notion page with current GitHub PR statuses and Jira ticket statuses. Call daily via /morning or standalone.
+requires_mcp: [jiraconfluencegusto, githubgusto, notiongusto]
+allowed-tools: [mcp__claude_ai_Github-Gusto__list_pull_requests, mcp__claude_ai_Github-Gusto__pull_request_read, mcp__claude_ai_Jira_Confluence__searchJiraIssuesUsingJql, mcp__claude_ai_Notion_Gusto__notion-query-data-sources, mcp__claude_ai_Notion_Gusto__notion-update-page, mcp__claude_ai_Notion_Gusto__notion-fetch]
 ---
 
 # /benops-sync — BenOps Notion Hub Sync
