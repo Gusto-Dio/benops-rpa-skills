@@ -1,7 +1,7 @@
 {
   "name": "benops-rpa",
   "description": "Claude Code skills for the BenOps RPA team at Gusto",
-  "version": "1.3.0",
+  "version": "1.4.0",
   "pages": {
     "icon": "#",
     "features": [
@@ -25,7 +25,7 @@
       {
         "type": "skill",
         "name": "benops-sync",
-        "description": "Sync BenOps RPA Hub Notion page with current GitHub PR and Jira statuses",
+        "description": "Sync BenOps RPA Hub Notion page with current GitHub PR statuses, Jira ticket statuses, and incident records",
         "mcp": []
       },
       {
