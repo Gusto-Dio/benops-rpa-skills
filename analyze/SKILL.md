@@ -1,6 +1,7 @@
 ---
 name: analyze
 description: Review current branch changes for XAML issues, naming conventions, selector quality, and uncommitted modifications. Run before any PR.
+allowed-tools: [Bash(git *), PowerShell, Read, Grep, Glob]
 ---
 
 # /analyze — Review Current Branch Changes
