@@ -1,84 +1,62 @@
 {
   "name": "benops-rpa",
   "description": "Claude Code skills for the BenOps RPA team at Gusto",
-  "version": "1.1.0",
+  "version": "1.1.1",
   "pages": {
-    "icon": "🤖",
+    "icon": "#",
     "features": [
       "Daily briefing, triage, and sync workflows for BenOps RPA engineers",
-      "Add new skills by creating skills/<name>/SKILL.md"
+      "Ticket investigation with Orchestrator log analysis",
+      "Status updates via Slack, Notion sync, and test case creation"
     ],
     "components": [
       {
         "type": "skill",
         "name": "analyze",
-        "description": "Review current branch changes for XAML issues, naming conventions, and selector quality — run before any PR",
+        "description": "Review current branch changes for XAML issues, naming conventions, and selector quality",
         "mcp": []
       },
       {
         "type": "skill",
         "name": "benops-rpa-setup",
-        "description": "Interactive VDI setup for new BenOps RPA team members — installs tools, plugins, and configures MCPs",
+        "description": "Interactive VDI setup for new BenOps RPA team members",
         "mcp": []
       },
       {
         "type": "skill",
         "name": "benops-sync",
-        "description": "Syncs the BenOps RPA Hub Notion page with current GitHub PR statuses and Jira ticket statuses",
-        "mcp": [
-          { "name": "Jira", "required": true },
-          { "name": "GitHub", "required": true },
-          { "name": "Notion", "required": true }
-        ]
+        "description": "Sync BenOps RPA Hub Notion page with current GitHub PR and Jira statuses",
+        "mcp": []
       },
       {
         "type": "skill",
         "name": "benops-ticket-investigation",
-        "description": "Structured investigation workflow for BenOps RPA production failures — Orchestrator logs before XAML code",
-        "mcp": [
-          { "name": "Jira", "required": true },
-          { "name": "GitHub", "required": false }
-        ]
+        "description": "Structured investigation for BenOps RPA production failures — Orchestrator logs first",
+        "mcp": []
       },
       {
         "type": "skill",
         "name": "benops-triage-agent",
-        "description": "First-response triage for a BenOps RPA support ticket — reads Slack thread + Jira, diagnoses Production, posts business-facing update",
-        "mcp": [
-          { "name": "Jira", "required": true },
-          { "name": "Slack", "required": true },
-          { "name": "GitHub", "required": false }
-        ]
+        "description": "First-response triage for a BenOps RPA support ticket",
+        "mcp": []
       },
       {
         "type": "skill",
         "name": "followup",
-        "description": "Composes and sends daily status update to Sri/Oscar via Slack — reads Sheets queue, open PRs, and Jira",
-        "mcp": [
-          { "name": "Jira", "required": true },
-          { "name": "GitHub", "required": true },
-          { "name": "Slack", "required": true },
-          { "name": "Google Sheets", "required": true }
-        ]
+        "description": "Daily status update to Sri/Oscar via Slack",
+        "mcp": []
       },
       {
         "type": "skill",
         "name": "morning",
-        "description": "Daily briefing — priority contacts sweep, Slack alerts, active Jira tickets, open PRs, next ticket suggestion",
-        "mcp": [
-          { "name": "Jira", "required": true },
-          { "name": "GitHub", "required": true },
-          { "name": "Slack", "required": true },
-          { "name": "Notion", "required": false }
-        ]
+        "description": "Daily briefing — priority contacts, Slack alerts, Jira tickets, open PRs",
+        "mcp": []
       },
       {
         "type": "skill",
         "name": "uipath-test-cases-from-ticket",
-        "description": "Creates UiPath Staging test cases from a Jira ticket — samples Production queue items and launches recreator job",
-        "mcp": [
-          { "name": "Jira", "required": true }
-        ]
+        "description": "Create UiPath Staging test cases from a Jira ticket",
+        "mcp": []
       }
     ]
   }
