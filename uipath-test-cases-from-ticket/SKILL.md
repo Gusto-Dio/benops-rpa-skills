@@ -1,6 +1,9 @@
 ---
+name: uipath-test-cases-from-ticket
 description: Create UiPath Staging test cases from a JIRA ticket. Reads the ticket, samples production queue items, and launches the recreator job in Staging.
 argument-hint: <ticket-id> [--count N] [--clean-staging] [--include-failed] [--monitor]
+requires_mcp: [jiraconfluencegusto]
+allowed-tools: [Bash(uip *), mcp__claude_ai_Jira_Confluence__getJiraIssue, AskUserQuestion]
 ---
 
 The user wants to create UiPath Staging test cases tied to a JIRA ticket.
