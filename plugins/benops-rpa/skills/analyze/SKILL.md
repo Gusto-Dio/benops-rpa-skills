@@ -7,7 +7,8 @@ allowed-tools: [Bash(git *), PowerShell, Read, Grep, Glob]
 
 # /analyze — Review Current Branch Changes
 
-No arguments needed. Analyzes everything changed on the current branch vs develop. Respond in Portuguese.
+No arguments needed. Analyzes everything changed on the current branch vs develop.
+Respond in English.
 
 ---
 
@@ -15,15 +16,17 @@ No arguments needed. Analyzes everything changed on the current branch vs develo
 
 ### STEP 1 — Read branch state
 
+Run all git commands from the current working directory — no hardcoded paths.
+
 ```powershell
 # Current branch
-git -C "C:\Users\diogenesribei_gsto\Documents\Projects\biztech-uipath-rpa" branch --show-current
+git branch --show-current
 
 # Files changed vs develop
-git -C "C:\Users\diogenesribei_gsto\Documents\Projects\biztech-uipath-rpa" diff develop..HEAD --name-only
+git diff develop..HEAD --name-only
 
 # Full diff of changed files
-git -C "C:\Users\diogenesribei_gsto\Documents\Projects\biztech-uipath-rpa" diff develop..HEAD
+git diff develop..HEAD
 ```
 
 ### STEP 2 — For each changed XAML file, run these checks
@@ -32,7 +35,7 @@ git -C "C:\Users\diogenesribei_gsto\Documents\Projects\biztech-uipath-rpa" diff 
 For every `ui:SomeActivity` tag found in the diff additions (`+` lines), verify that activity type already exists in the project:
 
 ```powershell
-Select-String -Path "C:\Users\diogenesribei_gsto\Documents\Projects\biztech-uipath-rpa\**\*.xaml" -Pattern "ui:ActivityName" -Recurse
+Select-String -Path ".\**\*.xaml" -Pattern "ui:ActivityName" -Recurse
 ```
 
 If an activity type appears in the diff but NOT elsewhere in the project → **flag as HIGH risk**.
@@ -56,7 +59,7 @@ Check arguments and variables in changed XAML:
 
 #### Check E — Uncommitted changes
 ```powershell
-git -C "C:\Users\diogenesribei_gsto\Documents\Projects\biztech-uipath-rpa" status --short
+git status --short
 ```
 Flag any modified files that are NOT staged (might be forgotten).
 
@@ -65,24 +68,24 @@ Flag any modified files that are NOT staged (might be forgotten).
 ## Output Format
 
 ```
-## Análise do branch [branch-name]
+## Branch Analysis — [branch-name]
 
-**Arquivos alterados:** [N] | **Commits:** [N]
+**Files changed:** [N] | **Commits:** [N]
 
-### 🔴 Crítico
+### Critical
 [Issues that could break the build or affect other processes — must fix before PR]
 
-### 🟡 Atenção
-[Issues that should be reviewed — selectors frágeis, naming, etc.]
+### Attention
+[Issues that should be reviewed — fragile selectors, naming violations, etc.]
 
-### 🟢 OK
+### OK
 [What looks good — activity types verified, no Library edits, etc.]
 
-### 📋 Checklist antes do PR
-- [ ] Todas as atividades novas verificadas no projeto
-- [ ] Nenhum arquivo de Library alterado
-- [ ] Transações testadas no Orchestrator
-- [ ] IDs de transação prontos para o PR body
+### Pre-PR Checklist
+- [ ] All new activity types verified in the project
+- [ ] No Library files modified
+- [ ] Transactions tested in Orchestrator
+- [ ] Transaction IDs ready for PR body
 ```
 
-If no issues are found in a category, say "Nenhum problema encontrado" in one line — do not omit the category.
+If no issues are found in a category, say "No issues found" in one line — do not omit the category.

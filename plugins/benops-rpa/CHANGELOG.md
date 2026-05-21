@@ -4,6 +4,15 @@ All notable changes to this plugin are documented here.
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 Versioning: PATCH for bug fixes, MINOR for new skills, MAJOR for breaking changes.
 
+## [1.3.0] — 2026-05-21
+
+### Changed
+- `analyze`: removed hardcoded absolute path (`C:\Users\...`) from all git and Select-String commands — now runs from CWD; works for any team member
+- `analyze`: output template changed from Portuguese to English
+- `morning`: all personal references (`@diogenes`, `Diogenes`, `Jonathan Boice`, etc.) moved out of execution steps — body now references Config keys only; output English
+- `followup`: added `My name` and `Sheets name filter` to Config; removed hardcoded `"Diogenes"` from filter and signature; output English
+- `benops-sync`: added `Config` section with Hub page ID, Processes DB ID, GitHub repo, Jira project, and team members (Jira usernames); output English; removed hardcoded JQL usernames from execution steps
+
 ## [1.2.0] — 2026-05-21
 
 ### Added

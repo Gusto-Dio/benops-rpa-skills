@@ -6,16 +6,17 @@ requires_mcp: [jiraconfluencegusto, githubgusto, slackgustoofficialmcp, gsheetsg
 allowed-tools: [mcp__claude_ai_Gsheets_Gusto__fetch, mcp__claude_ai_Github-Gusto__list_pull_requests, mcp__claude_ai_Github-Gusto__pull_request_read, mcp__claude_ai_Jira_Confluence__searchJiraIssuesUsingJql, mcp__claude_ai_Slack_Gusto_Offical__slack_send_message, AskUserQuestion]
 ---
 
-# /followup — Status Update to Sri
+# /followup — Status Update
 
 Send a concise daily status update via Slack. The user chooses the destination before sending.
-Respond entirely in Portuguese (our conversation language). All Slack messages must be in English.
+Respond in English. All Slack messages must be in English.
 
 ## Config
 Update these values when deploying for a different user.
 
 | Key | Value |
 |---|---|
+| My name | `Diogenes` |
 | My Slack ID | `U0ARX71R5FS` |
 | Sri Perinkolam Slack ID | `U07KMNHHFB6` |
 | Oscar Nuñez Slack ID | `U05UYA9S4G7` |
@@ -25,6 +26,7 @@ Update these values when deploying for a different user.
 | Jira Cloud ID | `3fd33630-4e39-4689-ad04-db32e3843117` |
 | Sheets ID | `1jb2atbGZXusvwDCh9a8DocVnhe4QaU_Hcm2rl2Ue0T0` |
 | Sheet tab | `RPA BenOps Nov 2025` |
+| Sheets name filter | `Diogenes` |
 
 ---
 
@@ -33,8 +35,8 @@ Update these values when deploying for a different user.
 ### STEP 1 — Gather context (run in parallel)
 
 **A) Google Sheets — work queue**
-Fetch the sheet tab "RPA BenOps Nov 2025" from the Sheets ID in Config.
-Filter rows where column E (Resource responsible) contains "Diogenes" (case-insensitive).
+Fetch the sheet tab (Config: Sheet tab) from the Sheets ID in Config.
+Filter rows where column E (Resource responsible) contains Config: Sheets name filter (case-insensitive).
 From those rows, extract:
 - Column A: Ticket ID
 - Column C: Priority
@@ -48,7 +50,7 @@ Classify each ticket:
 
 **B) GitHub — open PRs**
 Call list_pull_requests: owner=Gusto, repo=biztech-uipath-rpa, state=open, sort=updated, direction=desc, perPage=50.
-Filter to PRs where author.login matches GitHub login in Config. Take the 3 most recent.
+Filter to PRs where author.login matches Config: GitHub login. Take the 3 most recent.
 For each, get:
 - PR number and title
 - Review status: approved / changes requested / awaiting re-review / awaiting review
@@ -68,8 +70,8 @@ Fields: summary, status, priority, updated
 
 ### STEP 2 — Determine current state
 
-- If there is a **current ticket** in Sheets → Diogenes is actively working on it
-- If all Sheets tickets are **Done** or no active ticket → Diogenes may be ready for next
+- If there is a **current ticket** in Sheets → actively working on it
+- If all Sheets tickets are **Done** or no active ticket → may be ready for next
 - List **next tickets** (up to 3) ordered by Priority (High first)
 
 ---
@@ -96,20 +98,20 @@ Here's my status for today (DATE):
 *Blockers:*
 [PRs with "changes requested" where author has NOT yet responded. If none: omit.]
 
-— Diogenes
+— [Config: My name]
 ```
 
 ---
 
 ### STEP 4 — Present draft and ask destination
 
-Show the draft in Portuguese, then ask:
+Show the draft, then ask:
 
-"Aqui está o rascunho — para onde quer enviar?
+"Here's the draft — where do you want to send it?
 
-**1.** DM para a Sri apenas
-**2.** Grupo (eu, Sri e Oscar)
-**3.** Canal #biztech-rpa"
+**1.** DM to Sri only
+**2.** Group (me, Sri, and Oscar)
+**3.** Channel #biztech-rpa"
 
 Accept numeric answers (1, 2, 3) or natural language.
 
@@ -119,11 +121,11 @@ Accept numeric answers (1, 2, 3) or natural language.
 
 | Option | Destination | channel_id |
 |---|---|---|
-| 1 | DM to Sri | `U07KMNHHFB6` |
-| 2 | Group DM | `C0AV2UULSER` |
-| 3 | Channel | `C0AFP67B5AQ` |
+| 1 | DM to Sri | Config: Sri Perinkolam Slack ID |
+| 2 | Group DM | Config: Group DM |
+| 3 | Channel | Config: BizTech RPA channel |
 
-After sending, confirm in Portuguese:
-- Option 1: "Enviado para a Sri ✓"
-- Option 2: "Enviado para o grupo (Sri + Oscar) ✓"
-- Option 3: "Enviado no canal ✓"
+After sending, confirm:
+- Option 1: "Sent to Sri ✓"
+- Option 2: "Sent to group (Sri + Oscar) ✓"
+- Option 3: "Sent to channel ✓"
