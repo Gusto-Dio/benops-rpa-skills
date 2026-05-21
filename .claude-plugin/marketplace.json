@@ -1,0 +1,11 @@
+{
+  "name": "benops-rpa-skills",
+  "description": "BenOps RPA skills for the Gusto BizTech RPA team",
+  "plugins": [
+    {
+      "name": "benops-rpa",
+      "description": "Daily ops, ticket investigation, and automation workflows for BenOps RPA",
+      "path": "plugins/benops-rpa"
+    }
+  ]
+}
