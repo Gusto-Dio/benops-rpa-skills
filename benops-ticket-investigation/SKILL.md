@@ -1,6 +1,8 @@
 ---
 name: benops-ticket-investigation
 description: Use when a BenOps RPA process is failing in Production and a bug ticket needs investigation — before reading any XAML code or proposing a fix
+requires_mcp: [jiraconfluencegusto, githubgusto]
+allowed-tools: [Bash(uip *), PowerShell, Read, Grep, Glob, mcp__claude_ai_Jira_Confluence__getJiraIssue, mcp__claude_ai_Jira_Confluence__searchJiraIssuesUsingJql, mcp__claude_ai_Github-Gusto__list_pull_requests, mcp__claude_ai_Github-Gusto__get_file_contents, mcp__claude_ai_Github-Gusto__list_commits]
 ---
 
 # BenOps Ticket Investigation
