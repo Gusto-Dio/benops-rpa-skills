@@ -48,7 +48,7 @@ benops-rpa-skills/
             │   └── references/
             │       ├── orchestrator-log-queries.md
             │       └── investigation-rules.md
-            └── ... (5 more skills)
+            └── ... (4 more skills)
 ```
 
 ### Key Files Explained
@@ -58,7 +58,7 @@ benops-rpa-skills/
 **`plugin.json`** — the plugin manifest. Declares name, version, and the full list of skills. This is what shows up in `claude plugins list`:
 ```
 ❯ benops-rpa@benops-rpa-skills
-    Version: 1.1.1
+    Version: 1.3.0
     Status: ✔ enabled
 ```
 
@@ -79,7 +79,7 @@ allowed-tools: [mcp__claude_ai_Slack_Gusto_Offical__slack_search_public_and_priv
 
 ## What Changed in Each Skill
 
-Three new frontmatter fields were added to every skill:
+### Frontmatter fields (added to every skill)
 
 | Field | What it does | Example |
 |---|---|---|
@@ -88,6 +88,24 @@ Three new frontmatter fields were added to every skill:
 | `allowed-tools` | Restricts what tools the skill can call | `[mcp__slack__search, Skill, Agent]` |
 
 `allowed-tools` is the most important — a skill that only needs to read Slack and Jira shouldn't be able to edit files or run shell commands. This makes skills auditable and safe to share.
+
+### Config section (added to user-facing skills)
+
+Skills that contain personal values (`morning`, `followup`, `benops-sync`, `benops-ticket-investigation`) now have a **Config table** at the top of the skill body:
+
+```markdown
+## Config
+Update these values when deploying for a different user.
+
+| Key | Value |
+|---|---|
+| My name        | `Diogenes` |
+| My Slack handle | `@diogenes` |
+| GitHub login   | `Gusto-Dio` |
+| ...            | ...         |
+```
+
+All personal references in the execution steps point to Config keys — nothing is hardcoded in the logic. A new team member only needs to update the Config table; the rest of the skill works as-is.
 
 ---
 
