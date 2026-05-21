@@ -1,6 +1,8 @@
 ---
 name: morning
 description: Daily briefing — reads Slack, Jira, and GitHub in parallel. Covers priority contacts (Jonathan, Oscar, Sri), alerts, active tickets, open PRs, and next ticket suggestion.
+requires_mcp: [jiraconfluencegusto, githubgusto, slackgustoofficialmcp]
+allowed-tools: [mcp__claude_ai_Slack_Gusto_Offical__slack_search_public_and_private, mcp__claude_ai_Slack_Gusto_Offical__slack_read_channel, mcp__claude_ai_Slack_Gusto_Offical__slack_read_thread, mcp__claude_ai_Jira_Confluence__searchJiraIssuesUsingJql, mcp__claude_ai_Jira_Confluence__getJiraIssue, mcp__claude_ai_Github-Gusto__list_pull_requests, mcp__claude_ai_Github-Gusto__pull_request_read, Skill, Agent]
 ---
 
 # /morning — Daily Briefing
