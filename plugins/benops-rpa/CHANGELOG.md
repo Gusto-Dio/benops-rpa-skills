@@ -4,6 +4,17 @@ All notable changes to this plugin are documented here.
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 Versioning: PATCH for bug fixes, MINOR for new skills, MAJOR for breaking changes.
 
+## [1.2.0] — 2026-05-21
+
+### Added
+- `benops-ticket-investigation`: Phase 0 — on trigger, automatically updates the BenOps tracking spreadsheet:
+  - Sets Status (column K) → `"In Progress"`
+  - Sets `Dev Start Date` column → today's date (`YYYY-MM-DD`)
+  - Non-blocking: if ticket not found in sheet, investigation continues and a warning is appended to the fix proposal
+- `benops-ticket-investigation`: `Config` section with Sheets ID, tab name, and column mapping
+- `gsheetsgusto` added to `requires_mcp`
+- `mcp__claude_ai_Gsheets_Gusto__fetch` and `mcp__claude_ai_Gsheets_Gusto__update` added to `allowed-tools`
+
 ## [1.1.1] — 2026-05-21
 
 ### Fixed
