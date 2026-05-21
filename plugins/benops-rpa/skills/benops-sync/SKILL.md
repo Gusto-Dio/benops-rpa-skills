@@ -33,7 +33,7 @@ Update team members when the roster changes.
 2. Fetch recently merged PRs (last 7 days): same tool, state: closed
 3. Fetch BenOps Jira tickets: `mcp__claude_ai_Jira_Confluence__searchJiraIssuesUsingJql`
    JQL: `project = BT AND assignee in (Config: Team members) AND updated >= -30d ORDER BY updated DESC`
-   Fields to capture per ticket: `key`, `summary`, `status`, `issuetype`, `resolutiondate`, `assignee`
+   Fields to capture per ticket: `key`, `summary`, `status`, `issuetype`, `resolutiondate`, `created`, `assignee`
 
 ### STEP 2 — Fetch Processes database rows
 
@@ -64,16 +64,15 @@ Use `mcp__claude_ai_Notion_Gusto__notion-update-page` (page ID from Step 2) to u
 
 ### STEP 5 — Sync Incidents database
 
-Populate the Incidents DB with new incident records from resolved Bug tickets.
+Populate the Incidents DB with new incident records from Bug tickets (any status — pending and resolved).
 
 **5a. Fetch existing Incidents DB rows**
 Use `mcp__claude_ai_Notion_Gusto__notion-query-data-sources` on Config: Incidents DB ID.
 Collect all existing values from the `Jira Ticket` field to build a deduplication set.
 
 **5b. Identify new incidents**
-From Step 1 Jira results, filter tickets matching ALL of:
-- `issuetype.name = "Bug"`
-- `status.name = "Done"`
+From Step 1 Jira results, filter tickets matching:
+- `issuetype.name = "Bug"` (any status — pending and resolved are both tracked)
 
 For each matching ticket, check: does its key (e.g. `BT-72018`) already exist in the Incidents DB `Jira Ticket` field?
 - If YES → skip (already recorded)
@@ -87,7 +86,7 @@ For each new incident, use `mcp__claude_ai_Notion_Gusto__notion-create-pages` wi
 - Parent: Config: Incidents DB ID
 - Properties:
   - `Title` (title): Jira ticket summary
-  - `Date` (date): `resolutiondate` from Jira (ISO 8601, e.g. `2026-05-21`)
+  - `Date` (date): `resolutiondate` if the ticket is Done; otherwise the ticket `created` date (ISO 8601, e.g. `2026-05-21`)
   - `Process` (rich_text): process name from 5c, or blank
   - `Jira Ticket` (rich_text): ticket key (e.g. `BT-72018`)
   - `Root Cause` (rich_text): leave blank — fill manually
