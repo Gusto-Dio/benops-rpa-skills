@@ -4,6 +4,15 @@ All notable changes to this plugin are documented here.
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 Versioning: PATCH for bug fixes, MINOR for new skills, MAJOR for breaking changes.
 
+## [1.4.0] — 2026-05-21
+
+### Changed
+- `benops-sync`: added Incidents DB sync (STEP 5) — on each run, queries Jira for `issuetype = Bug` tickets (any status, last 30d), checks against existing Incidents DB rows by `Jira Ticket` field, and creates new rows for unrecorded incidents
+- `benops-sync`: added `Incidents DB ID` to Config section
+- `benops-sync`: added `notion-create-pages` to `allowed-tools`
+- `benops-sync`: STEP numbering updated (Incidents = 5, timestamp = 6, report = 7)
+- `benops-sync`: report now includes count of new incidents recorded; reminds to fill Root Cause and Fix Applied manually
+
 ## [1.3.0] — 2026-05-21
 
 ### Changed
