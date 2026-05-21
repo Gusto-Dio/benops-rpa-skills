@@ -1,6 +1,9 @@
 ---
+name: benops-triage-agent
 description: First-response triage for a BenOps RPA ticket. Reads Slack thread + JIRA ticket, diagnoses Production via uip + repo, optionally disables triggers (with confirmation), sets Story Points, posts business-facing Slack update and developer-handoff JIRA comment. Idempotent across reruns.
 argument-hint: <BT-key | Slack-permalink>
+requires_mcp: [jiraconfluencegusto, slackgustoofficialmcp, githubgusto]
+allowed-tools: [Bash(uip *), mcp__claude_ai_Slack_Gusto_Offical__slack_read_thread, mcp__claude_ai_Slack_Gusto_Offical__slack_search_public_and_private, mcp__claude_ai_Slack_Gusto_Offical__slack_send_message, mcp__claude_ai_Jira_Confluence__getJiraIssue, mcp__claude_ai_Jira_Confluence__editJiraIssue, mcp__claude_ai_Jira_Confluence__addCommentToJiraIssue, mcp__claude_ai_Github-Gusto__pull_request_read, AskUserQuestion, Skill]
 ---
 
 Invoke the `uipath-benops-triage` skill to triage the ticket identified by `$ARGUMENTS`.
