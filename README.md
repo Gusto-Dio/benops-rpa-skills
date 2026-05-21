@@ -10,8 +10,10 @@ Each skill lives in its own subfolder. The folder name is the skill name.
 benops-rpa-skills/
 ├── benops-rpa-setup/
 │   └── SKILL.md          # VDI setup for new team members
-└── benops-ticket-investigation/
-    └── SKILL.md          # Structured investigation for production failures
+├── benops-ticket-investigation/
+│   └── SKILL.md          # Structured investigation for production failures
+└── benops-sync/
+    └── SKILL.md          # Daily sync of BenOps Notion Hub with GitHub PRs + Jira
 ```
 
 ## Installing a skill
@@ -31,6 +33,7 @@ Then open Claude Code and type `/<skill-name>` to invoke it.
 |---|---|---|
 | `benops-rpa-setup` | Interactive VDI setup for new BenOps RPA team members — installs tools, plugins, and configures MCPs | `/benops-rpa-setup` |
 | `benops-ticket-investigation` | Structured investigation workflow for production failures — enforces Orchestrator logs before XAML code analysis | `/benops-ticket-investigation` |
+| `benops-sync` | Syncs the BenOps RPA Hub Notion page with current GitHub PR statuses and Jira ticket statuses — call daily via `/morning` or standalone | `/benops-sync` |
 
 ## Adding a new skill
 
