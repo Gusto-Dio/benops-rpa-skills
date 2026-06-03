@@ -1,25 +1,26 @@
 ---
 name: benops-sync
-description: Use to sync the BenOps RPA Hub Notion page with current GitHub PR statuses, Jira ticket statuses, and incident records. Call daily via /morning or standalone.
+description: Use to sync the BenOps RPA Hub Notion page with current GitHub PR statuses, Jira ticket statuses, and library versions. Call daily via /morning or standalone.
 sdlc_phases: [operate]
 requires_mcp: [jiraconfluencegusto, githubgusto, notiongusto]
-allowed-tools: [mcp__claude_ai_Github-Gusto__list_pull_requests, mcp__claude_ai_Github-Gusto__pull_request_read, mcp__claude_ai_Jira_Confluence__searchJiraIssuesUsingJql, mcp__claude_ai_Notion_Gusto__notion-query-data-sources, mcp__claude_ai_Notion_Gusto__notion-update-page, mcp__claude_ai_Notion_Gusto__notion-fetch, mcp__claude_ai_Notion_Gusto__notion-create-pages]
+allowed-tools: [mcp__claude_ai_Github-Gusto__list_pull_requests, mcp__claude_ai_Github-Gusto__pull_request_read, mcp__claude_ai_Github-Gusto__get_file_contents, mcp__claude_ai_Jira_Confluence__searchJiraIssuesUsingJql, mcp__claude_ai_Notion_Gusto__notion-query-data-sources, mcp__claude_ai_Notion_Gusto__notion-update-page, mcp__claude_ai_Notion_Gusto__notion-fetch, Bash(uip *)]
 ---
 
 # /benops-sync — BenOps Notion Hub Sync
 
-Sync the BenOps RPA Hub Notion page with current GitHub PR statuses, Jira ticket statuses, and incident records.
-Respond in English. All tool calls remain in English.
+Sync the BenOps RPA Hub Notion page with current GitHub PR statuses, Jira ticket statuses, and library versions.
+Respond in English. All tool calls in English.
 
 ## Config
-Update team members when the roster changes.
+Update when roster, repo, or DB IDs change.
 
 | Key | Value |
 |---|---|
 | Hub page ID | `35dad673c6c281ca9beed83cf58fdb22` |
 | Processes DB ID | `ba7266d884b6425c9fc0036b483bd8d0` |
-| Incidents DB ID | `5c5a55e5b865443ba41f31b19f8ea7b1` |
+| Library DB data source ID | `27a0a131-61fe-4a8e-9101-3b83290c7718` |
 | GitHub repo | `Gusto/biztech-uipath-rpa` |
+| Orchestrator Libraries feed | `https://cloud.uipath.com/gustoinc/Production/orchestrator_/odata/Libraries?$top=100` |
 | Jira project | `BT` |
 | Team members (Jira usernames) | `currentUser(), "oscar.nunez", "ahsen", "harinath"` |
 
@@ -29,84 +30,127 @@ Update team members when the roster changes.
 
 ### STEP 1 — Fetch current state (run in parallel)
 
-1. Fetch all open PRs: `mcp__claude_ai_Github-Gusto__list_pull_requests` (owner: Gusto, repo: biztech-uipath-rpa, state: open)
-2. Fetch recently merged PRs (last 7 days): same tool, state: closed
-3. Fetch BenOps Jira tickets: `mcp__claude_ai_Jira_Confluence__searchJiraIssuesUsingJql`
-   JQL: `project = BT AND assignee in (Config: Team members) AND updated >= -30d ORDER BY updated DESC`
-   Fields to capture per ticket: `key`, `summary`, `status`, `issuetype`, `resolutiondate`, `created`, `assignee`
+**1a.** Fetch all open PRs: `mcp__claude_ai_Github-Gusto__list_pull_requests`
+- owner: `Gusto`, repo: `biztech-uipath-rpa`, state: `open`
+
+**1b.** Fetch recently merged PRs (last 7 days): same tool, state: `closed`
+
+**1c.** Fetch BenOps Jira tickets: `mcp__claude_ai_Jira_Confluence__searchJiraIssuesUsingJql`
+- JQL: `project = BT AND assignee in (currentUser(), "oscar.nunez", "ahsen", "harinath") AND updated >= -30d ORDER BY updated DESC`
+- Fields per ticket: `key`, `summary`, `status`, `issuetype`, `resolutiondate`, `created`, `assignee`
+
+**1d.** Fetch Library DB rows: `mcp__claude_ai_Notion_Gusto__notion-query-data-sources`
+- Data source: Config: Library DB data source ID
+- Query: `SELECT * FROM "collection://27a0a131-61fe-4a8e-9101-3b83290c7718" WHERE "BenOps" = '__YES__'`
+- Capture per row: `id`, `Library`, `GitHub Version`, `Orchestrator Version`, `Status`
+
+---
 
 ### STEP 2 — Fetch Processes database rows
 
-Use `mcp__claude_ai_Notion_Gusto__notion-query-data-sources` on Config: Processes DB ID to get all current rows with their page IDs and current field values (including the `Jira Ticket` field for cross-referencing in Steps 3 and 5).
+Use `mcp__claude_ai_Notion_Gusto__notion-query-data-sources` on Config: Processes DB ID.
+Capture all rows with: page `id`, `Process`, `Status`, `PR Number`, `Jira Ticket`, `Last Synced`.
 
-### STEP 3 — Build update map
+---
 
-For each row in Processes that has a non-empty Jira Ticket field:
-1. Find matching Jira ticket in Step 1 results → get Jira status
-2. Find matching PR in Step 1 PR lists by looking for `[BT-XXXXX]` in PR title → get PR state and review status
+### STEP 3 — Build Processes update map
+
+For each Processes row with a non-empty `Jira Ticket` field:
+1. Find matching Jira ticket from Step 1c by ticket key → get Jira `status`
+2. Find matching PR from Steps 1a/1b by searching for `[BT-XXXXX]` in PR title → get PR state and review status
 3. Derive new Status using this exact mapping:
-   - Jira status = Done AND PR merged → "Deployed to Prod"
-   - Jira status = Done AND PR open → "Ready for Deployment"
-   - PR has review state = CHANGES_REQUESTED → "Pending Review"
-   - PR open AND has review requests pending → "Pending Review"
-   - Jira status = In Progress AND PR open → "In Progress"
-   - Jira status = In Progress AND no PR found → "In Progress"
-   - No Jira ticket match found AND no PR match found → skip (no update)
+
+| Condition | Derived Status |
+|---|---|
+| Jira = Done AND PR merged | `"Deployed to Prod"` |
+| Jira = Done AND PR open | `"Ready for Deployment"` |
+| PR review state = CHANGES_REQUESTED | `"Pending Review"` |
+| PR open AND has pending review requests | `"Pending Review"` |
+| Jira = In Progress AND PR open | `"In Progress"` |
+| Jira = In Progress AND no PR found | `"In Progress"` |
+| No Jira match AND no PR match | skip — no update |
+
 4. If derived status equals current Notion status → skip (no update needed)
+
+---
 
 ### STEP 4 — Apply Processes updates
 
-For each row with a status change:
-Use `mcp__claude_ai_Notion_Gusto__notion-update-page` (page ID from Step 2) to update:
-- `Status` → new derived status value
-- `PR Number` → PR number + state string, e.g. "#2683 Open — Changes Requested" or "#2683 Merged"
-- `Last Synced` → today's date in ISO 8601 format (YYYY-MM-DD)
+For each row with a status change, use `mcp__claude_ai_Notion_Gusto__notion-update-page` to update:
+- `Status` → derived status value
+- `PR Number` → e.g. `"#2683 Open — Changes Requested"` or `"#2683 Merged"`
+- `date:Last Synced:start` → today's date (YYYY-MM-DD)
 
-### STEP 5 — Sync Incidents database
+---
 
-Populate the Incidents DB with new incident records from Bug tickets (any status — pending and resolved).
+### STEP 5 — Sync Library DB
 
-**5a. Fetch existing Incidents DB rows**
-Use `mcp__claude_ai_Notion_Gusto__notion-query-data-sources` on Config: Incidents DB ID.
-Collect all existing values from the `Jira Ticket` field to build a deduplication set.
+**5a. Fetch Orchestrator latest versions**
 
-**5b. Identify new incidents**
-From Step 1 Jira results, filter tickets matching:
-- `issuetype.name = "Bug"` (any status — pending and resolved are both tracked)
+```bash
+uip orchestrator library list --output json
+```
 
-For each matching ticket, check: does its key (e.g. `BT-72018`) already exist in the Incidents DB `Jira Ticket` field?
-- If YES → skip (already recorded)
-- If NO → it is a new incident to create
+If `uip` does not support library listing, fetch via REST instead:
+```
+GET Config: Orchestrator Libraries feed
+Authorization: Bearer <token>
+```
 
-**5c. Resolve Process name**
-For each new incident ticket key, look up the Processes DB rows (Step 2) for a row whose `Jira Ticket` field matches the ticket key. If found, capture the Process row's name. If not found, leave Process blank.
+> ⚠️ Do NOT use `uip package list` — it reads from the Processes feed and returns stale versions.
+> Always use the Libraries feed (`odata/Libraries`) or the Orchestrator UI path:
+> `https://cloud.uipath.com/gustoinc/Production/orchestrator_/libraries/tenant?tid=11015&fid=46023`
 
-**5d. Create new incident rows**
-For each new incident, use `mcp__claude_ai_Notion_Gusto__notion-create-pages` with:
-- Parent: Config: Incidents DB ID
-- Properties:
-  - `Title` (title): Jira ticket summary
-  - `Date` (date): `resolutiondate` if the ticket is Done; otherwise the ticket `created` date (ISO 8601, e.g. `2026-05-21`)
-  - `Process` (rich_text): process name from 5c, or blank
-  - `Jira Ticket` (rich_text): ticket key (e.g. `BT-72018`)
-  - `Root Cause` (rich_text): leave blank — fill manually
-  - `Fix Applied` (rich_text): leave blank — fill manually
+Capture: `{ packageName → latestVersion }` mapping.
 
-### STEP 6 — Update hub home timestamp
+**5b. Fetch GitHub latest versions (run in parallel)**
 
-Use `mcp__claude_ai_Notion_Gusto__notion-update-page` on Config: Hub page ID:
-Replace the line `Synced daily via /benops-sync · Last synced: —` (or whatever the current timestamp is) with:
-`Synced daily via /benops-sync · Last synced: YYYY-MM-DD HH:MM`
+For each Library DB row from Step 1d, read its `project.json`:
+- Tool: `mcp__claude_ai_Github-Gusto__get_file_contents`
+- owner: `Gusto`, repo: `biztech-uipath-rpa`
+- path: `{Library}/project.json` (derive from `Library` field value)
+- Extract `projectVersion` field
+- If file not found → GitHub version = `""` (library not in repo)
+
+**5c. Derive Library Status**
+
+| Condition | Status |
+|---|---|
+| GitHub version = Orchestrator version | `"Up to Date"` |
+| GitHub version > Orchestrator version (semver) | `"Behind"` — newer in GitHub, not yet published |
+| Orchestrator version > GitHub version (semver) | `"Orch Ahead"` — newer in Orchestrator, not yet committed |
+| GitHub version exists, Orchestrator version empty | `"Not Deployed"` |
+| Orchestrator version exists, GitHub version empty | `"Orchestrator Only"` |
+| No change in either version | skip |
+
+**5d. Update Library DB rows**
+
+For each row where any value changed, use `mcp__claude_ai_Notion_Gusto__notion-update-page` to update:
+- `GitHub Version`
+- `Orchestrator Version`
+- `Status`
+
+Skip rows with no change.
+
+---
+
+### STEP 6 — Update hub timestamp
+
+Use `mcp__claude_ai_Notion_Gusto__notion-update-page` on Config: Hub page ID.
+Replace the existing timestamp line with:
+```
+Synced daily via /benops-sync (GitHub PRs + Jira tickets) · Last synced: YYYY-MM-DD HH:MM
+```
+
+---
 
 ### STEP 7 — Report
 
-Output:
 ```
 ### BenOps Sync complete
-- X processes checked, Y statuses updated: [list process names with status change]
-- Z new incidents recorded: [list ticket keys + summaries]
+- X processes checked, Y statuses updated: [list process names + old → new status]
+- Z libraries checked, W versions updated: [list library names + what changed]
 - Timestamp updated on hub page
 ```
 
-If no status changes and no new incidents: output "No changes detected."
-If new incidents were created, remind: "Root Cause and Fix Applied fields are blank — fill in manually on the Incidents page."
+If no changes in either DB: output `No changes detected.`
