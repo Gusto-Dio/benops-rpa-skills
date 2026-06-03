@@ -9,7 +9,8 @@ allowed-tools: [mcp__claude_ai_Github-Gusto__list_pull_requests, mcp__claude_ai_
 # /benops-sync — BenOps Notion Hub Sync
 
 Sync the BenOps RPA Hub Notion page with current GitHub PR statuses, Jira ticket statuses, and library versions.
-Respond in English. All tool calls in English.
+
+> **Language rule:** Every value written to Notion — field values, notes, PR strings, status labels, timestamps — must be in English. Never write Portuguese into any Notion field.
 
 ## Config
 Update when roster, repo, or DB IDs change.
@@ -76,14 +77,18 @@ For each Processes row with a non-empty `Jira Ticket` field:
 
 ### STEP 4 — Apply Processes updates
 
+**All values written to Notion must be in English.**
+
 For each row with a status change, use `mcp__claude_ai_Notion_Gusto__notion-update-page` to update:
-- `Status` → derived status value
-- `PR Number` → e.g. `"#2683 Open — Changes Requested"` or `"#2683 Merged"`
+- `Status` → derived status value (English label from mapping table above)
+- `PR Number` → English format: `"#2683 Open — Changes Requested"` or `"#2683 Merged"`
 - `date:Last Synced:start` → today's date (YYYY-MM-DD)
 
 ---
 
 ### STEP 5 — Sync Library DB
+
+**All values written to Notion must be in English.**
 
 **5a. Fetch Orchestrator latest versions**
 
@@ -91,14 +96,14 @@ For each row with a status change, use `mcp__claude_ai_Notion_Gusto__notion-upda
 uip orchestrator library list --output json
 ```
 
-If `uip` does not support library listing, fetch via REST instead:
+If `uip` does not support library listing, fetch via REST:
 ```
 GET Config: Orchestrator Libraries feed
 Authorization: Bearer <token>
 ```
 
 > ⚠️ Do NOT use `uip package list` — it reads from the Processes feed and returns stale versions.
-> Always use the Libraries feed (`odata/Libraries`) or the Orchestrator UI path:
+> Always use the Libraries feed (`odata/Libraries`) or the Orchestrator UI:
 > `https://cloud.uipath.com/gustoinc/Production/orchestrator_/libraries/tenant?tid=11015&fid=46023`
 
 Capture: `{ packageName → latestVersion }` mapping.
@@ -117,18 +122,18 @@ For each Library DB row from Step 1d, read its `project.json`:
 | Condition | Status |
 |---|---|
 | GitHub version = Orchestrator version | `"Up to Date"` |
-| GitHub version > Orchestrator version (semver) | `"Behind"` — newer in GitHub, not yet published |
-| Orchestrator version > GitHub version (semver) | `"Orch Ahead"` — newer in Orchestrator, not yet committed |
-| GitHub version exists, Orchestrator version empty | `"Not Deployed"` |
-| Orchestrator version exists, GitHub version empty | `"Orchestrator Only"` |
+| GitHub version > Orchestrator version (semver) | `"Behind"` |
+| Orchestrator version > GitHub version (semver) | `"Orch Ahead"` |
+| GitHub version exists, Orchestrator empty | `"Not Deployed"` |
+| Orchestrator version exists, GitHub empty | `"Orchestrator Only"` |
 | No change in either version | skip |
 
 **5d. Update Library DB rows**
 
 For each row where any value changed, use `mcp__claude_ai_Notion_Gusto__notion-update-page` to update:
-- `GitHub Version`
-- `Orchestrator Version`
-- `Status`
+- `GitHub Version` — semver string, e.g. `"1.550.8"`
+- `Orchestrator Version` — semver string, e.g. `"1.550.8"`
+- `Status` — English label from 5c table
 
 Skip rows with no change.
 
@@ -137,7 +142,7 @@ Skip rows with no change.
 ### STEP 6 — Update hub timestamp
 
 Use `mcp__claude_ai_Notion_Gusto__notion-update-page` on Config: Hub page ID.
-Replace the existing timestamp line with:
+Replace the existing timestamp line with (in English):
 ```
 Synced daily via /benops-sync (GitHub PRs + Jira tickets) · Last synced: YYYY-MM-DD HH:MM
 ```
@@ -145,6 +150,8 @@ Synced daily via /benops-sync (GitHub PRs + Jira tickets) · Last synced: YYYY-M
 ---
 
 ### STEP 7 — Report
+
+Output in English:
 
 ```
 ### BenOps Sync complete
