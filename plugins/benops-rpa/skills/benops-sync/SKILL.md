@@ -36,6 +36,36 @@ Update when roster, repo, or DB IDs change.
 
 ## Execution Plan
 
+### STEP 0 — Orchestrator login check
+
+Run the following health check **before any other step**:
+
+```bash
+uip user
+```
+
+If the command fails or returns no user → run:
+
+```bash
+uip login
+```
+
+> Tell the user: "Orchestrator login required. Please run `! uip login` in the prompt to authenticate via browser, then confirm when done."
+> Wait for user confirmation before continuing.
+
+After confirming login (or if `uip user` succeeded), validate the production tenant:
+
+```bash
+uip or jobs list --folder-path "Benefits/CarrierAutomation" --limit 1
+```
+
+- If `Data` is non-empty → production tenant confirmed, proceed.
+- If `Data` is empty → wrong tenant (probably staging). Tell the user:
+  > "uip is authenticated but pointing to the wrong tenant. Please run `! uip login` to re-authenticate and select the **Production** org, then confirm."
+  > Wait for user confirmation, then re-run the validation before proceeding.
+
+---
+
 ### STEP 1 — Fetch current state (run all in parallel)
 
 **1a.** Open PRs: `mcp__claude_ai_Github-Gusto__list_pull_requests`
