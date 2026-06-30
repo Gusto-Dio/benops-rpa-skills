@@ -3,7 +3,7 @@ name: benops-ticket-investigation
 description: Use when a BenOps RPA process is failing in Production and a bug ticket needs investigation — before reading any XAML code or proposing a fix
 sdlc_phases: [operate]
 requires_mcp: [jiraconfluencegusto, githubgusto]
-allowed-tools: [Bash(uip *), PowerShell, Read, Grep, Glob, mcp__claude_ai_Jira_Confluence__getJiraIssue, mcp__claude_ai_Jira_Confluence__searchJiraIssuesUsingJql, mcp__claude_ai_Github-Gusto__list_pull_requests, mcp__claude_ai_Github-Gusto__get_file_contents, mcp__claude_ai_Github-Gusto__list_commits]
+allowed-tools: [Bash(uip *), PowerShell, Read, Grep, Glob, mcp__claude_ai_Jira_Confluence__getJiraIssue, mcp__claude_ai_Jira_Confluence__searchJiraIssuesUsingJql, mcp__claude_ai_Github-Gusto__list_pull_requests, mcp__claude_ai_Github-Gusto__get_file_contents, mcp__claude_ai_Github-Gusto__list_commits, mcp__claude_ai_Github-Gusto__search_pull_requests]
 ---
 
 # BenOps Ticket Investigation
@@ -25,6 +25,8 @@ See `references/investigation-rules.md` for the full red flags and common mistak
 
 ### Phase 1 — Orchestrator Production Logs
 Pull logs using the Orchestrator REST API. Full query guide, auth instructions, error pattern reference, and tenant IDs: `references/orchestrator-log-queries.md`
+
+**Always run the production connection health check first** (see reference). If the CLI is not on the production tenant, run `uip login` immediately — the browser will open for the user to authenticate. Wait for the user to confirm login is complete before continuing.
 
 **Extract verbatim error messages first.** These drive everything else. Do NOT ask the user to provide logs.
 
