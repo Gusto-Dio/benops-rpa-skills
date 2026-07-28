@@ -188,55 +188,55 @@ For each new library from 5c, use `mcp__claude_ai_Notion_Gusto__notion-create-pa
 
 ### STEP 6 — Sync Migration Process DB
 
+> **Source of truth:** the **`Current BenOps Bots`** tab (first tab, gid=0) of Config: Migration Process spreadsheet. This is the team's primary reference (confirmed by Sri) — do NOT use the per-carrier "Migration Plan" tabs for status; those go stale and were the root cause of a wrong-data incident (2026-07-28). Never write back to the spreadsheet — this DB is a one-way mirror.
+
 **6a. Fetch Google Sheets source data**
 
-Use `mcp__claude_ai_Gsheets_Gusto__fetch` for each tab of Config: Migration Process spreadsheet ID.
-Tabs to fetch: `GroupSubmission`, `MemberSubmission`, `Reconciliation`, `PacketCollection`.
+Use `mcp__claude_ai_Gsheets_Gusto__fetch` with `sheet_name: "Current BenOps Bots"` on Config: Migration Process spreadsheet ID.
 
-Capture per row: `Process Name`, `Type`, `Resource`, `Migrated to Modern`, `Date of Migration`, `Status`, `Dependencies`, `Comments`.
+Capture per row: `Process Name`, `Legacy / Modern` (values: `Legacy`, `Modern`, `Portable`), `Category`, `Migration Status` (values: `Deployed to Prod`, `Deprecated`, `N/A`).
 
-Build a deduplicated master list by `Process Name` across all 4 tabs.
-If the same process name appears in multiple tabs, keep the first occurrence (tab order above).
+Ignore the `Status` column (health: Running Fine / Faulting Frequently / etc.) and `Automation Done By` — not used for migration tracking.
 
-**6b. Find new bots (in spreadsheet but not in Notion)**
+**6b. Normalize into per-process records**
 
-For each bot in the spreadsheet master list, check if `Process Name` matches any row in Migration Process DB (Step 1e, case-insensitive).
-- If no match → add to "to create" list
+- Strip a trailing `_Modern` suffix from `Process Name` to get the base name.
+- Group rows by base name. If both a `Legacy` row and a `_Modern` row exist for the same base name, use the `_Modern` row's values as canonical (it reflects the current live state); the Legacy sibling needs no separate tracking.
+- Skip rows where `Legacy / Modern` = `Portable` AND `Migration Status` = `N/A` (shared utility, out of scope). Portable rows with `Migration Status` = `Deprecated` are still included.
+- Map `Category` → `Type`: `GOPS` → `GroupSubmission`, `MOPS` → `MemberSubmission`, `Reconcillation` → `Reconciliation`, `Advising Packet Collection` or `Packet Collection` → `PacketCollection`.
+- Derive `Migrated to Modern`:
+  - `Legacy / Modern` = `Modern` → `Yes`
+  - `Legacy / Modern` = `Legacy` (no Modern sibling) AND `Migration Status` = `Deployed to Prod` → `No` (still legacy, active, not yet migrated)
+  - `Legacy / Modern` = `Legacy` (no Modern sibling) AND `Migration Status` = `Deprecated` → `N/A` (fully retired, no replacement)
+- Derive `Status` (Notion field) directly from `Migration Status`: `Deployed to Prod` → `Deployed to Prod`; `Deprecated` → `Deprecated`. This column only distinguishes "live in prod" vs "retired" — it does NOT carry intermediate states (no Pending Testing / Not Started / Locally Committed). Do not infer those from this tab; if Notion already has a more granular status for a process, only overwrite it when the derived Status here actually conflicts (see 6d).
 
-**6c. Derive migration status for existing Notion rows**
+**6c. Find new bots (in spreadsheet but not in Notion)**
 
-For each row in Migration Process DB (Step 1e):
+For each normalized record, check if `Process Name` matches any row in Migration Process DB (Step 1e, case-insensitive).
+- If no match → add to "to create" list.
 
-| Condition | Derived Status |
-|---|---|
-| `Migrated to Modern` = true in Notion | skip — already final, no change |
-| Jira ticket (Step 1c) summary contains process name AND status = Done | `"Migrated"` + capture `resolutiondate` as Date of Migration |
-| Jira ticket matches AND status = In Progress | `"In Progress"` |
-| Open PR title (Step 1a) contains process name | `"In Progress"` |
-| None of the above | `"Pending"` |
+**6d. Reconcile existing Notion rows**
 
-If derived status = current Notion status → skip.
+For each row in Migration Process DB (Step 1e) with a matching normalized record:
+- If Notion's `Status` or `Migrated to Modern` differs from the derived values → update to match the spreadsheet (spreadsheet wins on these two fields).
+- Leave `Resource`, `Date of Migration`, `Comments`, `Dependencies` untouched — this tab doesn't carry them.
 
-**6d. Update existing Migration Process rows**
+**6e. Update existing Migration Process rows**
 
-For each row with a status change, use `mcp__claude_ai_Notion_Gusto__notion-update-page`:
+For each row with a change from 6d, use `mcp__claude_ai_Notion_Gusto__notion-update-page`:
 - `Status` (select): derived status
-- `Migrated to Modern` (checkbox): set `true` if derived status = `"Migrated"`
-- `date:Date of Migration:start`: if `resolutiondate` was captured in 6c (ISO 8601, YYYY-MM-DD)
+- `Migrated to Modern` (select): derived value
 
-**6e. Create new Migration Process rows**
+**6f. Create new Migration Process rows**
 
-For each bot from 6b, use `mcp__claude_ai_Notion_Gusto__notion-create-pages`:
+For each bot from 6c, use `mcp__claude_ai_Notion_Gusto__notion-create-pages`:
 - Parent database: Config: Migration Process DB ID
-- Properties (from spreadsheet row):
-  - `Process Name` (title): process name
-  - `Type` (select): from spreadsheet, if available
-  - `Resource` (select): from spreadsheet, if available
-  - `Migrated to Modern` (checkbox): from spreadsheet (true/false)
-  - `date:Date of Migration:start`: from spreadsheet (ISO 8601), if available
-  - `Status` (select): derive per 6c; if spreadsheet `Migrated to Modern` = true → `"Migrated"`, else derive from Jira/PRs
-  - `Dependencies` (rich_text): from spreadsheet, if available
-  - `Comments` (rich_text): from spreadsheet, if available
+- Properties:
+  - `Process Name` (title): base process name
+  - `Type` (select): derived per 6b
+  - `Migrated to Modern` (select): derived per 6b
+  - `Status` (select): derived per 6b
+  - Leave `Resource`, `Date of Migration`, `Comments`, `Dependencies` blank — fill manually
 
 ---
 
