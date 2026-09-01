@@ -1,0 +1,9 @@
+# Shell scripts must keep LF endings in the working tree, on every platform.
+#
+# The team clones on Windows VDIs where `core.autocrlf` is typically `true`, which rewrites
+# checked-out files to CRLF. Git Bash tolerates CRLF in a script — the current hook was tested
+# with CRLF endings and behaves correctly — but bash on macOS/Linux does not, and a future edit
+# introducing a CRLF-sensitive construct would fail silently on someone else's machine.
+#
+# Pinning this now costs nothing and removes a class of "works for me" bug from hooks.
+*.sh text eol=lf
