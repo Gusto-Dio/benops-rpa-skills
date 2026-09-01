@@ -38,6 +38,9 @@ benops-rpa-skills/
         │   └── plugin.json     ← manifest: name, version, list of skills
         ├── CHANGELOG.md
         ├── README.md
+        ├── hooks/                   ← runs automatically, nothing to invoke
+        │   ├── hooks.json           ← which event fires which script
+        │   └── bt-ticket-fields-gate.sh
         └── skills/
             ├── morning/
             │   └── SKILL.md
@@ -48,6 +51,10 @@ benops-rpa-skills/
             │   └── references/
             │       ├── orchestrator-log-queries.md
             │       └── investigation-rules.md
+            ├── ticket-fields/
+            │   ├── SKILL.md
+            │   └── references/
+            │       └── field-map.md ← Jira field ids, option lists, write shapes
             └── ... (4 more skills)
 ```
 
@@ -150,7 +157,90 @@ That's it. All 8 skills are available immediately.
 | `benops-sync` | `/benops-sync` | Sync BenOps Notion Hub with current PR and Jira statuses |
 | `followup` | `/followup` | Daily status update to Sri/Oscar via Slack |
 | `benops-rpa-setup` | `/benops-rpa-setup` | Interactive VDI setup for new team members |
+| `ticket-fields` | `/ticket-fields BT-XXXXX` | Fill the eight reportable fields on a BT ticket |
 | `uipath-test-cases-from-ticket` | `/uipath-test-cases-from-ticket BT-XXXXX` | Create Staging test cases from a Jira ticket |
+
+There is also one **hook**, which you never invoke: mention a `BT-xxxxx` in any prompt and it
+reminds Claude to run `ticket-fields` first. See below.
+
+---
+
+## Using `ticket-fields`
+
+### What it is for
+
+Eight fields on a BT ticket are what the team's reports read: **Priority, Complexity, Process,
+Category of Break, Workaround Solutions, Story Points, Sprint, Ticket Type?**. A ticket you are
+actively working with those fields empty is invisible to every one of those reports.
+
+The design principle is that **the fields belong to picking the ticket up, not to closing it.**
+Filled at close, they were never used for anything.
+
+### How to use it
+
+```
+/ticket-fields BT-75245                    # one ticket
+/ticket-fields BT-74698 BT-74699 BT-74666  # a batch to backfill
+```
+
+You can also just mention the ticket in a normal prompt. The hook will notice the key and
+prompt Claude to run this first — you do not have to remember the command.
+
+It **reads the current values before writing**, so running it twice is harmless. If everything
+is already filled it will tell you and stop.
+
+Claude derives all eight, **shows you a table, and waits for confirmation before writing.** You
+are accountable for these values — in particular Priority, where writing a value overrules the
+person who reported the issue. Check the table rather than waving it through.
+
+### What each field means here
+
+| Field | Rule |
+|---|---|
+| **Priority** | Mirror what the requester wrote in the intake text (`*Priority*: medium`). `Critical` needs a human decision — it pages people. |
+| **Complexity** | Cost to fix, **not** severity. `S` config only, `M` one process, `L` several bots or a Library change, `XL` framework or cross-team. A P1 outage fixed by a password reset is `S`. |
+| **Process** | Scope first. Spans more than one family — shared login, a library activity, a portal-wide change → **`Benefits`**. Not carrier automation at all → `Automation Ops`. One family only → derive from the bot name's trailing part (`BSCA_GroupSubmissions_MemberLevel` → `Member Level`). |
+| **Category of Break** | Exactly five values, comma-separated when several apply: `Portal UI Changes`, `Process Logic Errors`, `Login Issues`, `INFRA ISSUE`, `Data Issues`. From Sri's "Broken Bots" sheet, which is where these fields came from. |
+| **Workaround Solutions** | What BenOps does **until** the fix ships — not the code fix. `None — cases will queue until the fix deploys` is a real answer. Blank is not. |
+| **Story Points** | Days the ticket was open: `round(resolved − created)`, minimum 1. **Duration, not effort** — effort is Complexity. |
+| **Sprint** | Ticket open → the active sprint, always. Ticket `Done` → left alone. |
+| **Ticket Type?** | `Support` if something regressed, `Enhancement` if the bot never handled the case — even when it arrives as an escalation. |
+
+Full detail, including the exact Jira field ids and API write shapes, is in
+`skills/ticket-fields/references/field-map.md`. You do not need to read it; Claude does.
+
+### Two traps it exists to avoid
+
+**Old tickets carry dead option values.** Complexity used to be `Easy`/`Moderate`/`Difficult`
+and Ticket Type? used to include `Issue`/`Request`. Those options were replaced — the current
+lists are `S`/`M`/`L`/`XL` and `Enhancement`/`Support`. Copying a value off a similar older
+ticket now fails Jira validation. Half of a 49-ticket sample still holds the dead values.
+
+**A successful write is not proof.** Jira's edit response echoes back only the default fields
+and none of the custom ones. The skill always re-reads the eight afterwards to confirm. If you
+ever fill these by hand through the API, do the same.
+
+### The hook
+
+`hooks/bt-ticket-fields-gate.sh`, on `UserPromptSubmit`. When your prompt contains a
+`BT-xxxxx`, it adds a note to Claude's context pointing at this skill.
+
+- **Non-blocking by design.** It can never stop a prompt — including "what did we decide on
+  BT-75245?". A hook that blocks on a false match is worse than no hook.
+- **It only reads the prompt text.** Say "fix this Anthem bot" without a key and it stays quiet.
+  That is a known limit, accepted deliberately: catching work at the moment a tool runs would
+  need a `PreToolUse` gate, which is more intrusive than the team wanted.
+- Paths in the payload are stripped before matching, so working in a folder named after a ticket
+  does not trigger it.
+- To silence it for yourself, disable the plugin's hooks in `/config`. No repo change needed.
+
+### Where it sits in the other workflows
+
+- **`benops-ticket-investigation`** runs it as Phase 0. That does not conflict with the Iron
+  Rule — logs come before *code*, and these fields come from the intake text and the ticket's
+  own dates, so nothing is guessed early.
+- **`benops-triage-agent`** delegates the eight fields here rather than writing them itself, so
+  one skill owns the field ids and the current option lists.
 
 ---
 
