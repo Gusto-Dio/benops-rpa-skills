@@ -4,6 +4,21 @@ All notable changes to this plugin are documented here.
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 Versioning: PATCH for bug fixes, MINOR for new skills, MAJOR for breaking changes.
 
+## [1.5.0] — 2026-09-01
+
+### Added
+- `ticket-fields`: new skill. Fills the eight reportable fields on a BT support ticket — Priority, Complexity, Process, Category of Break, Workaround Solutions, Story Points, Sprint, Ticket Type?. Reads current values first, so it is idempotent; shows a table and waits for confirmation before writing; re-reads the eight afterwards to confirm the write landed
+- `ticket-fields/references/field-map.md`: the Jira field ids, current option lists, per-field decision rules, and the API write shape for each field type. Verified against live `createmeta` and per-issue `editmeta` on project BT
+- **First hook in this plugin.** `hooks/hooks.json` + `hooks/bt-ticket-fields-gate.sh` on `UserPromptSubmit`: when a prompt mentions a `BT-xxxxx`, adds a note pointing at `ticket-fields`. Non-blocking, pure bash, no external dependencies, strips path-bearing payload fields before matching
+- `README.md`: `Hooks` and `Adding a hook` sections
+- `OVERVIEW.md`: `Using ticket-fields` — team guide covering the eight fields, the two dead-option-list traps, and how to silence the hook
+
+### Changed
+- `benops-ticket-investigation`: added Phase 0 — invoke `ticket-fields` before pulling logs. Fields come from the intake text and the ticket's own dates, so this does not weaken the logs-before-code rule. Added `Skill` to `allowed-tools`
+- `benops-triage-agent`: hands the eight reportable fields to `ticket-fields` so a single skill owns the field ids and option lists; notes BT's Story Points as `customfield_10041` and Sprint as `customfield_10020`
+- `benops-triage-agent`: states that its companion `uipath-benops-triage` skill installs separately and is not part of this plugin, and to stop rather than improvise `uip` command shapes if it is absent
+- `benops-triage-agent`: clarified that the `editJiraIssue` response returns only default read fields, so a focused `getJiraIssue` is the only confirmation a write landed
+
 ## [1.4.0] — 2026-05-21
 
 ### Changed
