@@ -77,6 +77,8 @@ uip or jobs list --folder-path "Benefits/CarrierAutomation" --limit 1
 - JQL: `project = BT AND assignee in (currentUser(), "oscar.nunez", "ahsen", "harinath") AND updated >= -30d ORDER BY updated DESC`
 - Fields per ticket: `key`, `summary`, `status`, `issuetype`, `resolutiondate`, `created`, `assignee`
 
+> This query is the single source of truth for "every ticket assigned to the team" — it deliberately does NOT filter by issuetype. Downstream steps (especially Step 7) must reuse this full list and must NOT re-filter it down to a specific `issuetype` — this team's incident tickets are filed as `Task`, not `Bug`, so any such re-filter silently drops almost everything.
+
 **1d.** ALL Library DB rows: `mcp__claude_ai_Notion_Gusto__notion-query-data-sources`
 - Query: `SELECT * FROM "collection://27a0a131-61fe-4a8e-9101-3b83290c7718"`
 - Capture per row: `id`, `Library`, `GitHub Version`, `Orchestrator Version`, `Status`
@@ -242,6 +244,8 @@ For each bot from 6c, use `mcp__claude_ai_Notion_Gusto__notion-create-pages`:
 
 ### STEP 7 — Sync Broken Bots DB
 
+Purpose note: Broken Bots is the persistent evidence log for team ticket work — it must survive a ticket moving to Done and dropping off the live Jira board (dashboard 10203). That means it must capture every ticket assigned to the 4 team members that references a tracked process — regardless of `issuetype`. Do NOT filter by `issuetype = Bug` in this step: this team's incident tickets are filed as `Task`, and a Bug-only filter will silently drop almost every real incident.
+
 **7a. Fetch Google Sheets source data**
 
 Use `mcp__claude_ai_Gsheets_Gusto__fetch` on Config: Broken Bots spreadsheet ID.
@@ -257,16 +261,15 @@ Collect all existing Notion Broken Bots rows (Step 1f) as a set keyed by `Proces
 For each spreadsheet row, check if `Process Name + Carrier` is in the dedup set.
 - If no match → add to "to create" list.
 
-**Source 2 — Jira Bug tickets:**
-From Step 1c, filter tickets where `issuetype = Bug`.
-For each Bug ticket not matched to any existing Notion row (check if ticket summary contains any existing Process Name):
-- If no match → add to "to create" list.
+**Source 2 — Jira tickets assigned to the team (any issue type):**
+From Step 1c (already scoped to the 4 team members, any `issuetype` — Task, Bug, or otherwise), for each ticket not matched to any existing Notion row (check if ticket summary contains any existing Process Name):
+- If no match → add to "to create" list. Tickets that don't reference any tracked Process Name are correctly skipped — this step only evidences tickets tied to a specific tracked automation.
 
 **Cross-source dedup:** if the same `Process Name` appears from both Sheets and Jira, only create one row.
 
 **7d. Update existing Broken Bots rows**
 
-For each existing Notion row, find a matching Jira Bug ticket (Step 1c, `issuetype = Bug`, check if ticket summary contains the Process Name):
+For each existing Notion row, find a matching Jira ticket from Step 1c (any issue type — do not restrict to Bug; check if ticket summary contains the Process Name):
 - Ticket found AND status = Done → `Status` = `"Fixed"`
 - Ticket found AND status ≠ Done → `Status` = `"Pending"`
 - No ticket found → no change
