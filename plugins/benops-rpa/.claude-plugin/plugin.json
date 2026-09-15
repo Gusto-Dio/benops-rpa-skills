@@ -1,13 +1,14 @@
 {
   "name": "benops-rpa",
   "description": "Claude Code skills for the BenOps RPA team at Gusto",
-  "version": "1.4.0",
+  "version": "1.5.0",
   "pages": {
     "icon": "#",
     "features": [
       "Daily briefing, triage, and sync workflows for BenOps RPA engineers",
       "Ticket investigation with Orchestrator log analysis and automatic Sheets tracking update",
-      "Status updates via Slack, Notion sync, and test case creation"
+      "Status updates via Slack, Notion sync, and test case creation",
+      "Reportable Jira fields filled on pickup, prompted automatically when a BT key is mentioned"
     ],
     "components": [
       {
@@ -54,8 +55,20 @@
       },
       {
         "type": "skill",
+        "name": "ticket-fields",
+        "description": "Fill the eight reportable fields on a BT support ticket — Priority, Complexity, Process, Category of Break, Workaround Solutions, Story Points, Sprint, Ticket Type",
+        "mcp": []
+      },
+      {
+        "type": "skill",
         "name": "uipath-test-cases-from-ticket",
         "description": "Create UiPath Staging test cases from a Jira ticket",
+        "mcp": []
+      },
+      {
+        "type": "hook",
+        "name": "bt-ticket-fields-gate",
+        "description": "UserPromptSubmit — when a prompt mentions a BT ticket, reminds the agent to set the eight reportable fields first. Non-blocking.",
         "mcp": []
       }
     ]

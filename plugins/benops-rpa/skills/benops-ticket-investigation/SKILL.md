@@ -3,7 +3,7 @@ name: benops-ticket-investigation
 description: Use when a BenOps RPA process is failing in Production and a bug ticket needs investigation — before reading any XAML code or proposing a fix
 sdlc_phases: [operate]
 requires_mcp: [jiraconfluencegusto, githubgusto]
-allowed-tools: [Bash(uip *), PowerShell, Read, Grep, Glob, mcp__claude_ai_Jira_Confluence__getJiraIssue, mcp__claude_ai_Jira_Confluence__searchJiraIssuesUsingJql, mcp__claude_ai_Github-Gusto__list_pull_requests, mcp__claude_ai_Github-Gusto__get_file_contents, mcp__claude_ai_Github-Gusto__list_commits, mcp__claude_ai_Github-Gusto__search_pull_requests]
+allowed-tools: [Bash(uip *), PowerShell, Read, Grep, Glob, Skill, mcp__claude_ai_Jira_Confluence__getJiraIssue, mcp__claude_ai_Jira_Confluence__searchJiraIssuesUsingJql, mcp__claude_ai_Github-Gusto__list_pull_requests, mcp__claude_ai_Github-Gusto__get_file_contents, mcp__claude_ai_Github-Gusto__list_commits, mcp__claude_ai_Github-Gusto__search_pull_requests]
 ---
 
 # BenOps Ticket Investigation
@@ -22,6 +22,11 @@ See `references/investigation-rules.md` for the full red flags and common mistak
 ---
 
 ## Investigation Order (Non-Negotiable)
+
+### Phase 0 — The eight reportable fields
+Invoke the **`ticket-fields`** skill on the BT key before anything else. It reads the current values first, so it is cheap and idempotent when they are already filled.
+
+This does not compete with the Iron Rule. Logs come before **code**; these fields come from the intake text and the ticket's own dates, not from logs, so nothing is being guessed early. A ticket under investigation with empty fields is invisible to every report the team runs, and the fields only get harder to fill once the ticket closes.
 
 ### Phase 1 — Orchestrator Production Logs
 Pull logs using the Orchestrator REST API. Full query guide, auth instructions, error pattern reference, and tenant IDs: `references/orchestrator-log-queries.md`

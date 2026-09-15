@@ -22,7 +22,14 @@ benops-rpa-skills/
         │   ├── benops-triage-agent/SKILL.md
         │   ├── followup/SKILL.md
         │   ├── morning/SKILL.md
+        │   ├── ticket-fields/
+        │   │   ├── SKILL.md
+        │   │   └── references/
+        │   │       └── field-map.md ← BT Jira field ids, option lists, write shapes
         │   └── uipath-test-cases-from-ticket/SKILL.md
+        ├── hooks/                   ← fire automatically, nothing to invoke
+        │   ├── hooks.json
+        │   └── bt-ticket-fields-gate.sh
         ├── CHANGELOG.md
         └── README.md               ← plugin-level docs
 ```
