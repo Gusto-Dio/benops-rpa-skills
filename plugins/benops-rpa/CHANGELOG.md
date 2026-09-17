@@ -4,6 +4,20 @@ All notable changes to this plugin are documented here.
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 Versioning: PATCH for bug fixes, MINOR for new skills, MAJOR for breaking changes.
 
+## [1.5.1] — 2026-09-17
+
+### Changed
+- `ticket-fields`: writes **one field per call in a fixed order** instead of one combined `editJiraIssue`, so the two `Automation for Jira` rules that set **Start date** and **Due date** both fire. Order is Process → Complexity → Story Points → **Status (`In Progress`, transition 41)** → **Priority** → Sprint, Ticket Type? → Workaround Solutions, Category of Break
+- `ticket-fields`: **Priority is now written after the Status transition.** The Due date rule triggers on a Priority change and computes from Start date, so a Priority set while the ticket is still `New` yields no Due date. Evidenced by changelogs on BT-75725 and BT-75738 (both dates landed) against BT-75719 (Priority first — Start date only)
+- `ticket-fields`: transitions the ticket to `In Progress` when it is being picked up, and notes that `Under investigation` (111) fires neither automation
+- `ticket-fields`: the verify read now covers `customfield_10015` (Start date) and `duedate` as well as the eight, and allows for the 1–9 s automation delay
+- `ticket-fields`: `allowed-tools` gains `getTransitionsForJiraIssue` and `transitionJiraIssue`; description mentions a missing Start/Due date as a trigger
+
+### Added
+- `ticket-fields/references/field-map.md`: *The write order, and the two automations it feeds* — the trigger for each rule and the four changelogs it was derived from
+- `ticket-fields/references/field-map.md`: *Transitions* — the BT transition ids (41 In Progress, 111 Under investigation, 71 Done, …) and the three fields the Done transition validates, which this skill does not set and so cannot close a ticket
+- `OVERVIEW.md`: the write order and its two gotchas, in the team guide
+
 ## [1.5.0] — 2026-09-01
 
 ### Added

@@ -305,9 +305,117 @@ even when it arrives as an angry escalation.
 
 ---
 
+## The write order, and the two automations it feeds
+
+Two `Automation for Jira` rules watch these fields. Neither rule is visible through the API, so
+both were established from issue changelogs, where the automation's own edits appear under the
+`Automation for Jira` app account with second-level timestamps.
+
+| Automation | Trigger | Writes |
+|---|---|---|
+| **Start date** | the transition **to `In Progress`** (id **41**) | `customfield_10015`, 2–3 s later |
+| **Due date** | a **`priority` change**, with Start date already present | `duedate`, 1–9 s later |
+
+### The evidence
+
+**BT-75725** — Harinath, 2026-09-15. Worked:
+
+```
+08:44:12      status New → In Progress
+08:44:15.146  Automation for Jira → Start date = 2026-09-15
+08:44:15.202  priority Low → High            (56 ms after Start date existed)
+08:44:24.327  Automation for Jira → duedate = 2026-09-16
+```
+
+**BT-75738** — Oscar, same day, independently. Same shape, also worked:
+
+```
+10:52:06  status New → In Progress
+10:52:08  Automation for Jira → Start date
+10:52:14  priority Low → High
+10:52:15  Automation for Jira → duedate
+```
+
+**BT-75719** — Priority written *first*, Status last. Start date set, **Due date never set**:
+
+```
+07:36:45  priority Low → Medium     ← ticket still New; no Start date to compute from
+07:39:09  status New → In Progress
+07:39:11  Automation for Jira → Start date
+          (no duedate, ever)
+```
+
+**BT-75732** — moved to `Under investigation` (111) instead. **Neither** date set, even though
+Priority, Process, Complexity and Story Points were all filled.
+
+### What follows
+
+- **Status before Priority.** A Priority change on a ticket with no Start date is wasted; the
+  Due date rule has nothing to compute from and does not retry later.
+- **`In Progress` (41) specifically.** `Under investigation` and the other working statuses do
+  not trigger the Start date rule.
+- **One field per call.** A single combined `editJiraIssue` presents the changes to Jira with no
+  ordering at all, which is the mechanism behind "every field is set but there are no dates".
+- **This deviates from the order circulated in Slack** (Priority → Process → Complexity → Story
+  Points → Status). That order is exactly what BT-75719 did, and BT-75719 has no Due date. The
+  content order is honoured; only Priority moves, to after the transition. If the requirement is
+  restated, bring these changelogs rather than re-arguing it.
+
+Sample size is three tickets — two positive, one negative — plus one null case. The timestamps
+are 1–9 s apart and the automation account is named in every entry, so the attribution is solid;
+the *exact* rule conditions are inferred and could be confirmed by whoever owns the automation.
+
+---
+
+## Transitions
+
+Status is not a field edit. Use `transitionJiraIssue`, and pass the **transition** id, which is
+not the status id:
+
+```
+transitionJiraIssue(issueIdOrKey='BT-XXXXX', transition={"id": "41"})
+```
+
+All BT transitions are global, so any of these is reachable from any status. The ones that
+matter here:
+
+| Transition | Name | → status | Note |
+|---|---|---|---|
+| **41** | In Progress | `3` | the one that fires **Start date** |
+| 111 | Under investigation | `10171` | fires **nothing** — not a substitute |
+| 31 | New | `10033` | |
+| 21 | Ready for Development | `10178` | |
+| 181 | Ready for PR Review | `10080` | fires a separate `PR Review Date` automation |
+| 51 | Ready for Testing | `10195` | |
+| 121 | Awaiting Response From User | `10186` | |
+| 81 | On Hold | `10062` | |
+| 71 | **Done** | `10013` | see below — has validators |
+
+Re-read the list rather than trusting these ids if a transition is rejected:
+`getTransitionsForJiraIssue(issueIdOrKey=…, sortByOpsBarAndStatus=true)`.
+
+### Done (71) demands three fields this skill does not set
+
+The workflow rejects the transition outright — *"Please specify Complexity & Time Spent before
+closing"* and *"Field BizTech Issue Category is required"* — until all three are present.
+`/ticket-fields` sets Complexity but not the other two, so **it cannot close a ticket.**
+
+| Field | Id | Shape |
+|---|---|---|
+| Time Spent | `customfield_11296` | select — `0-5 min (False Positive)` 17823, `5-15 min` 17827, `15-30 min` 17829, `30-60 min` 17830, `60 min +` 17831 |
+| BizTech Issue Category | `customfield_11224` | **cascading** — `{"id": parent, "child": {"id": child}}`. Parents include Bug 17204, FAQ 17205, Enhancement 17206, Task 17211 |
+| Resolution | `resolution` | `{"id": "10000"}` = Done. 43 options exist, one of them literally `DO NOT USE` |
+
+Read the allowed values off the transition itself —
+`getTransitionsForJiraIssue(transitionId='71', expand='transitions.fields')`. The project's
+create-meta does **not** list them.
+
+---
+
 ## The write call
 
-One `editJiraIssue`, all eight fields:
+Write these **one field per call, in the order above**. The combined form below is kept only to
+document the per-field shapes — do not send it as one call:
 
 ```
 editJiraIssue(

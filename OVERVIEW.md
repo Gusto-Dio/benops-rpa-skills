@@ -193,6 +193,31 @@ Claude derives all eight, **shows you a table, and waits for confirmation before
 are accountable for these values — in particular Priority, where writing a value overrules the
 person who reported the issue. Check the table rather than waving it through.
 
+### The order it writes in, and why it matters
+
+Two Jira automations key off these fields, so the skill writes **one field at a time, in a fixed
+order** rather than all at once:
+
+1. Process → 2. Complexity → 3. Story Points
+4. **Status → `In Progress`** — this is what sets the **Start date**
+5. **Priority** — this is what sets the **Due date**
+6. Sprint, Ticket Type? → 7. Workaround Solutions, Category of Break
+
+**Priority goes after the Status change, not before it.** The Due date automation fires on a
+Priority change and computes from the Start date, so a Priority set while the ticket is still
+`New` produces no Due date at all — the ticket ends up fully filled with no dates on it. That
+is the failure the order is there to avoid, and it is why this differs from the sequence
+circulated in Slack. The changelogs behind it are in
+`skills/ticket-fields/references/field-map.md` under *The write order*.
+
+Two related gotchas worth knowing by hand:
+
+- **`Under investigation` is not a substitute for `In Progress`.** It fires neither automation,
+  so a ticket parked there never gets dates.
+- After the writes, the skill re-reads the eight **plus both dates** and tells you whether they
+  landed. The automations take 1–9 seconds, so "not there yet" and "did not fire" look the same
+  for a moment.
+
 ### What each field means here
 
 | Field | Rule |
