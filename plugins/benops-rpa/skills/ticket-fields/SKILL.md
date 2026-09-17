@@ -23,9 +23,10 @@ set before any investigation, and they are what makes the ticket findable afterw
 Core principle: **the fields are part of picking up the ticket, not part of closing it.**
 A ticket in progress with empty fields is invisible to every report the team runs.
 
-**The order of the writes is load-bearing, not cosmetic.** Two Jira automations key off these
-fields — one sets Start date, one sets Due date — and writing the fields in the wrong order
-leaves a ticket fully filled with no dates on it. See step 6.
+**The writes go one field at a time, in the team's stated order.** Two Jira automations key off
+these fields — one sets Start date, one sets Due date — so a single combined `editJiraIssue`,
+which gives Jira no ordering at all, is what leaves a ticket fully filled with no dates. See
+step 6 for the order and step 8 for the Due date repair.
 
 ## The Gate
 
@@ -77,30 +78,30 @@ working on the ticket.
    in `references/field-map.md` under *The write order*. A single combined `editJiraIssue`
    gives Jira no order at all, which is how a ticket ends up with every field set and no dates.
 
-   | # | Write | Why here |
+   This is the team's order, as circulated by the PM. Follow it.
+
+   | # | Write | Note |
    |---|---|---|
-   | 1 | **Priority** | no automation depends on it |
-   | 2 | **Process** | " |
-   | 3 | **Complexity** | " |
-   | 4 | **Status → `In Progress`** (transition **41**) | fires the **Start date** automation |
-   | 5 | **Story Points** | fires the **Due date** automation — `duedate = Start date + Story Points days`, and it is **skipped silently if Start date is empty** |
-   | 6 | **Sprint**, **Ticket Type?** | not in the team's stated order; safe here |
+   | 1 | **Priority** | |
+   | 2 | **Process** | |
+   | 3 | **Complexity** | |
+   | 4 | **Story Points** | |
+   | 5 | **Status → `In Progress`** (transition **41**) | fires the **Start date** automation |
+   | 6 | **Sprint**, **Ticket Type?** | not in the stated order; safe here |
    | 7 | **Workaround Solutions**, **Category of Break** | the team fills these last |
-
-   **Story Points is the one field that moves.** Everything else keeps the order circulated in
-   Slack; Story Points goes from position 4 to after the Status transition. The Due date rule
-   triggers on a **Story Points** change and computes `Start date + Story Points`, so a Story
-   Points written while the ticket is still `New` finds no Start date, is skipped, and **never
-   retries** — the field does not change again, so nothing fires it a second time.
-
-   Verified on BT-75657 (Priority `Low`, never touched, Due date still landed 2.2 s after Story
-   Points) and BT-75495, against BT-75719 (Story Points 34 s *before* the transition — no Due
-   date, ever). Priority is **not** the trigger; it is simply written near Story Points during
-   triage, which is what makes it look like one.
 
    **Only transition a ticket you are actually picking up**, and only if it is not already in a
    working status. `Under investigation` (111) does **not** fire either automation, so it is
    not a substitute for `In Progress`.
+
+   **One consequence to expect, and repair.** The Due date automation triggers on a **Story
+   Points** change and writes `Start date + Story Points days`. In this order Story Points is
+   written at step 4, before Start date exists, so the rule is skipped — and it does not retry,
+   because Story Points never moves again on its own. Step 8 handles that.
+
+   Evidence for the mechanism is in `references/field-map.md` under *The write order*: BT-75719
+   wrote Story Points 34 s before the transition and has no Due date to this day, while BT-75657
+   and BT-75495 wrote it afterwards and both got one.
 
 7. **Verify with a focused read — including both dates.** The `editJiraIssue` response echoes
    the issue back but contains **none of the custom fields you just wrote**; it is not evidence.
@@ -109,12 +110,21 @@ working on the ticket.
    one field per retry.
 
    Read back the eight **plus `customfield_10015` (Start date) and `duedate`**. The automations
-   land 1–9 s after their trigger, so if a date is still empty, re-read once before concluding
-   it failed. A Priority change that does not move the value may not register as a change — if
-   Due date is still empty, say so rather than silently re-poking the field.
+   land ~2.2–2.7 s after their trigger, so if a date is still empty, re-read once before
+   concluding it failed.
 
-8. **Report what was set and what was left.** Name any field you could not derive and say why,
-   and state whether both dates landed.
+8. **If Due date is empty, nudge Story Points once — then stop.** Start date now exists, so
+   re-writing Story Points gives the Due date rule its trigger with the input it needs. Write
+   the same value back and re-read.
+
+   If it is still empty after that, **say so plainly and name the cause** — Jira may not record
+   a same-value write as a change, and there is no way to force the rule from outside. Do not
+   invent a Due date by hand: a human-written `duedate` is indistinguishable from the
+   automation's in reports, and it hides the fact that the rule never fired.
+
+9. **Report what was set and what was left.** Name any field you could not derive and say why,
+   and state whether both dates landed. If Due date did not, that is worth mentioning out loud
+   rather than burying — it is the thing the order exists to produce.
 
 Then, and only then, continue to whatever was actually asked.
 
@@ -148,12 +158,13 @@ Listed **in write order** — the order is part of the answer, not a table sort.
 | 1 | Priority | `priority` | as stated by requester; else `Medium` if failing now |
 | 2 | Process | `customfield_13519` | spans >1 family → `Benefits`; else from the bot name |
 | 3 | Complexity | `customfield_10137` | `M` — cost to fix, not severity |
-| 4 | **Status** | transition **41** → `In Progress` | only when picking the ticket up; fires **Start date** |
-| 5 | **Story Points** | `customfield_10041` | elapsed days open — `round(resolved − created)`, min 1. Fires **Due date** = Start + this, so it **must land after step 4** |
+| 4 | Story Points | `customfield_10041` | elapsed days open — `round(resolved − created)`, min 1 |
+| 5 | **Status** | transition **41** → `In Progress` | only when picking the ticket up; fires **Start date** |
 | 6 | Sprint | `customfield_10020` | ticket open → active sprint id, always; `Done` → leave alone |
 | 6 | Ticket Type? | `customfield_10397` | `Support` if a regression, else `Enhancement` |
 | 7 | Workaround Solutions | `customfield_17536` | `None — cases will queue until the fix deploys` |
 | 7 | Category of Break | `customfield_17533` | one of the canonical five |
+| 8 | *(repair)* Story Points again | `customfield_10041` | only if `duedate` came back empty |
 
 Story Points does double duty: it is the team's record of how long the ticket was open **and**
 the number of days the Due date automation adds to Start date. Those agree by construction —
@@ -182,8 +193,8 @@ Canonical Category of Break, comma-separated when several apply:
 
 - About to call `uip`, read a `.xaml`, or open a PR for a BT key whose fields you have not read
 - About to put all the fields in **one** `editJiraIssue` call — that is the order bug
-- About to write **Story Points before** the `In Progress` transition — the Due date rule is
-  skipped silently and never retries, so no Due date will ever be set
+- About to write a `duedate` by hand because the automation did not fire — it is
+  indistinguishable from the automation's in reports and hides that the rule never ran
 - About to use `Under investigation` (111) as the working status — it fires neither automation
 - About to call the write done without re-reading `customfield_10015` and `duedate`
 - About to write `Moderate`, `Difficult`, `Easy`, `Issue`, or `Request` into a select field

@@ -56,7 +56,7 @@
       {
         "type": "skill",
         "name": "ticket-fields",
-        "description": "Fill the eight reportable fields on a BT support ticket in the order the Jira automations need — Priority, Process, Complexity, Status, Story Points, then Sprint, Ticket Type, Workaround Solutions and Category of Break",
+        "description": "Fill the eight reportable fields on a BT support ticket in the team's order — Priority, Process, Complexity, Story Points, Status, then Sprint, Ticket Type, Workaround Solutions and Category of Break — with a Due date repair pass",
         "mcp": []
       },
       {

@@ -198,18 +198,28 @@ person who reported the issue. Check the table rather than waving it through.
 Two Jira automations key off these fields, so the skill writes **one field at a time, in a fixed
 order** rather than all at once:
 
-1. Priority → 2. Process → 3. Complexity
-4. **Status → `In Progress`** — this is what sets the **Start date**
-5. **Story Points** — this is what sets the **Due date**, as `Start date + Story Points days`
+1. Priority → 2. Process → 3. Complexity → 4. Story Points
+5. **Status → `In Progress`** — this is what sets the **Start date**
 6. Sprint, Ticket Type? → 7. Workaround Solutions, Category of Break
 
-**Story Points goes after the Status change — it is the only field whose position is forced.**
-The Due date automation fires on a Story Points change and adds it to the Start date, so Story
-Points written while the ticket is still `New` finds no Start date, is skipped, and never
-retries. The ticket ends up fully filled with no Due date on it. That is the one place this
-differs from the sequence circulated in Slack, which has Story Points at position 4 and Status
-at 5. The changelogs are in `skills/ticket-fields/references/field-map.md` under
-*The write order*.
+This is the order circulated by the PM, and the skill follows it.
+
+**One thing to know about Due date.** It comes from a second automation that triggers on a
+**Story Points** change and writes `Start date + Story Points days`. Start date only exists once
+the ticket reaches `In Progress`, so in this order Story Points is written before Start date
+exists and the rule is skipped — and it does not retry, because Story Points never moves again
+on its own.
+
+The skill handles that by **re-writing Story Points once after the transition** and then telling
+you whether the Due date landed. If it did not, it says so rather than filling the date in by
+hand — a hand-written Due date looks identical to the automation's in every report.
+
+The same applies when you fill a ticket in the Jira UI: if you set Story Points before moving
+the ticket to `In Progress`, nudge Story Points again afterwards. And `Under investigation` is
+not a substitute for `In Progress` — it fires neither automation.
+
+The changelogs behind all of this are in
+`skills/ticket-fields/references/field-map.md` under *The write order*.
 
 Two related gotchas worth knowing by hand:
 

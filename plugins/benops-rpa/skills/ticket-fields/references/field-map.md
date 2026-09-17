@@ -369,18 +369,30 @@ Tickets where Story Points or Start date was edited *after* the write do not fit
 - **BT-75732** — parked in `Under investigation` (111) with all four fields filled. That status
   fires **neither** rule, so neither date exists.
 
-### What follows
+### What the skill does with this
 
-- **Story Points after the Status transition.** It is the only field whose position is forced.
-  Priority, Process and Complexity can sit wherever the team prefers.
+**The team's order stands** — Priority, Process, Complexity, Story Points, Status, then
+Workaround Solutions and Category of Break. That was the skill owner's decision on 2026-09-17,
+after the mechanism above was put in front of him. Do not quietly reorder it.
+
+That order writes Story Points at position 4, before Start date exists, so the Due date rule is
+skipped on the first pass. The skill therefore **re-writes Story Points once after the
+transition** (step 8 of the workflow) to give the rule its trigger with Start date present, and
+reports honestly when the Due date still does not appear.
+
 - **`In Progress` (41) specifically** for Start date. The other working statuses do not fire it.
-- **One field per call.** A combined `editJiraIssue` gives Jira no ordering at all.
-- **A Due date that is missing stays missing.** Re-setting Story Points to the same value may
-  not register as a change; if a ticket needs fixing after the fact, the reliable repair is to
-  set Start date by hand and then move Story Points to a different value and back.
+- **One field per call.** A combined `editJiraIssue` gives Jira no ordering at all, which is the
+  mechanism behind "every field filled, no dates".
+- **A same-value write may not register as a change**, in which case the nudge does nothing.
+  There is no way to force the rule from outside. The reliable manual repair is to move Story
+  Points to a different value and back, with Start date already present.
+- **Never hand-write `duedate`.** A human-written date is indistinguishable from the
+  automation's in any report, and it conceals that the rule never ran.
 
-The order circulated in Slack puts Story Points at position 4 and Status at 5, which is exactly
-the BT-75719 sequence. Only Story Points needs to move.
+**The durable fix is on the rule side, not ours:** if the Due date rule set Start date itself
+when it is missing — or triggered on the transition as well as on Story Points — the ordering
+would stop mattering for everyone, including people filling tickets by hand in the UI. That is
+worth raising with whoever owns the two rules.
 
 **What is not established:** the rule definitions themselves are not readable from this
 connector, so the triggers are inferred from authorship, latency and arithmetic across ten
