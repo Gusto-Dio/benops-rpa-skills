@@ -79,19 +79,24 @@ working on the ticket.
 
    | # | Write | Why here |
    |---|---|---|
-   | 1 | **Process** | no automation depends on it |
-   | 2 | **Complexity** | " |
-   | 3 | **Story Points** | " |
+   | 1 | **Priority** | no automation depends on it |
+   | 2 | **Process** | " |
+   | 3 | **Complexity** | " |
    | 4 | **Status → `In Progress`** (transition **41**) | fires the **Start date** automation |
-   | 5 | **Priority** | fires the **Due date** automation — needs Start date to already exist |
+   | 5 | **Story Points** | fires the **Due date** automation — `duedate = Start date + Story Points days`, and it is **skipped silently if Start date is empty** |
    | 6 | **Sprint**, **Ticket Type?** | not in the team's stated order; safe here |
    | 7 | **Workaround Solutions**, **Category of Break** | the team fills these last |
 
-   **Priority is written after the Status transition, not before it.** That is a deliberate
-   departure from the order circulated in Slack (Priority first, Status fifth) and it is the
-   whole point: the Due date automation fires on a Priority change and computes from Start
-   date, so a Priority written while the ticket is still `New` produces no Due date at all.
-   Verified on BT-75725 and BT-75738 (worked) against BT-75719 (Priority first — no Due date).
+   **Story Points is the one field that moves.** Everything else keeps the order circulated in
+   Slack; Story Points goes from position 4 to after the Status transition. The Due date rule
+   triggers on a **Story Points** change and computes `Start date + Story Points`, so a Story
+   Points written while the ticket is still `New` finds no Start date, is skipped, and **never
+   retries** — the field does not change again, so nothing fires it a second time.
+
+   Verified on BT-75657 (Priority `Low`, never touched, Due date still landed 2.2 s after Story
+   Points) and BT-75495, against BT-75719 (Story Points 34 s *before* the transition — no Due
+   date, ever). Priority is **not** the trigger; it is simply written near Story Points during
+   triage, which is what makes it look like one.
 
    **Only transition a ticket you are actually picking up**, and only if it is not already in a
    working status. `Under investigation` (111) does **not** fire either automation, so it is
@@ -140,15 +145,19 @@ Listed **in write order** — the order is part of the answer, not a table sort.
 
 | # | Field | ID | Default when nothing else is known |
 |---|---|---|---|
-| 1 | Process | `customfield_13519` | spans >1 family → `Benefits`; else from the bot name |
-| 2 | Complexity | `customfield_10137` | `M` — cost to fix, not severity |
-| 3 | Story Points | `customfield_10041` | elapsed days open — `round(resolved − created)`, min 1 |
+| 1 | Priority | `priority` | as stated by requester; else `Medium` if failing now |
+| 2 | Process | `customfield_13519` | spans >1 family → `Benefits`; else from the bot name |
+| 3 | Complexity | `customfield_10137` | `M` — cost to fix, not severity |
 | 4 | **Status** | transition **41** → `In Progress` | only when picking the ticket up; fires **Start date** |
-| 5 | **Priority** | `priority` | as stated by requester; else `Medium` if failing now. Fires **Due date** — must land after step 4 |
+| 5 | **Story Points** | `customfield_10041` | elapsed days open — `round(resolved − created)`, min 1. Fires **Due date** = Start + this, so it **must land after step 4** |
 | 6 | Sprint | `customfield_10020` | ticket open → active sprint id, always; `Done` → leave alone |
 | 6 | Ticket Type? | `customfield_10397` | `Support` if a regression, else `Enhancement` |
 | 7 | Workaround Solutions | `customfield_17536` | `None — cases will queue until the fix deploys` |
 | 7 | Category of Break | `customfield_17533` | one of the canonical five |
+
+Story Points does double duty: it is the team's record of how long the ticket was open **and**
+the number of days the Due date automation adds to Start date. Those agree by construction —
+one point per day — so the Due date is "started on X, expected to take N days".
 
 Canonical Category of Break, comma-separated when several apply:
 `Portal UI Changes` · `Process Logic Errors` · `Login Issues` · `INFRA ISSUE` · `Data Issues`
@@ -173,7 +182,8 @@ Canonical Category of Break, comma-separated when several apply:
 
 - About to call `uip`, read a `.xaml`, or open a PR for a BT key whose fields you have not read
 - About to put all the fields in **one** `editJiraIssue` call — that is the order bug
-- About to write **Priority before** the `In Progress` transition — no Due date will be set
+- About to write **Story Points before** the `In Progress` transition — the Due date rule is
+  skipped silently and never retries, so no Due date will ever be set
 - About to use `Under investigation` (111) as the working status — it fires neither automation
 - About to call the write done without re-reading `customfield_10015` and `duedate`
 - About to write `Moderate`, `Difficult`, `Easy`, `Issue`, or `Request` into a select field

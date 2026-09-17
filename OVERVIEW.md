@@ -198,17 +198,18 @@ person who reported the issue. Check the table rather than waving it through.
 Two Jira automations key off these fields, so the skill writes **one field at a time, in a fixed
 order** rather than all at once:
 
-1. Process → 2. Complexity → 3. Story Points
+1. Priority → 2. Process → 3. Complexity
 4. **Status → `In Progress`** — this is what sets the **Start date**
-5. **Priority** — this is what sets the **Due date**
+5. **Story Points** — this is what sets the **Due date**, as `Start date + Story Points days`
 6. Sprint, Ticket Type? → 7. Workaround Solutions, Category of Break
 
-**Priority goes after the Status change, not before it.** The Due date automation fires on a
-Priority change and computes from the Start date, so a Priority set while the ticket is still
-`New` produces no Due date at all — the ticket ends up fully filled with no dates on it. That
-is the failure the order is there to avoid, and it is why this differs from the sequence
-circulated in Slack. The changelogs behind it are in
-`skills/ticket-fields/references/field-map.md` under *The write order*.
+**Story Points goes after the Status change — it is the only field whose position is forced.**
+The Due date automation fires on a Story Points change and adds it to the Start date, so Story
+Points written while the ticket is still `New` finds no Start date, is skipped, and never
+retries. The ticket ends up fully filled with no Due date on it. That is the one place this
+differs from the sequence circulated in Slack, which has Story Points at position 4 and Status
+at 5. The changelogs are in `skills/ticket-fields/references/field-map.md` under
+*The write order*.
 
 Two related gotchas worth knowing by hand:
 

@@ -307,63 +307,86 @@ even when it arrives as an angry escalation.
 
 ## The write order, and the two automations it feeds
 
-Two `Automation for Jira` rules watch these fields. Neither rule is visible through the API, so
-both were established from issue changelogs, where the automation's own edits appear under the
-`Automation for Jira` app account with second-level timestamps.
+Two `Automation for Jira` rules watch these fields. Neither rule definition is readable through
+this connector, so both were established from issue changelogs — the automation's own edits
+appear under the `Automation for Jira` app account, and the engine answers in a consistent
+**2.2–2.7 s**, which is what lets you tell trigger from coincidence.
 
 | Automation | Trigger | Writes |
 |---|---|---|
-| **Start date** | the transition **to `In Progress`** (id **41**) | `customfield_10015`, 2–3 s later |
-| **Due date** | a **`priority` change**, with Start date already present | `duedate`, 1–9 s later |
+| **Start date** | the transition **to `In Progress`** (id **41**) | `customfield_10015` = today, ~2.4 s later |
+| **Due date** | a change to **Story Points** (`customfield_10041`) | `duedate` = **Start date + Story Points days**, ~2.2–2.7 s later |
 
-### The evidence
+**The Due date rule is skipped, silently, when Start date is empty — and it never retries.**
+Story Points does not change again on its own, so nothing fires it a second time. That is the
+whole failure mode: a ticket with every field filled and no Due date on it.
 
-**BT-75725** — Harinath, 2026-09-15. Worked:
+### Priority is not the trigger
 
-```
-08:44:12      status New → In Progress
-08:44:15.146  Automation for Jira → Start date = 2026-09-15
-08:44:15.202  priority Low → High            (56 ms after Start date existed)
-08:44:24.327  Automation for Jira → duedate = 2026-09-16
-```
+It looks like one, because triage writes Priority and Story Points within seconds of each other.
+Three things rule it out:
 
-**BT-75738** — Oscar, same day, independently. Same shape, also worked:
-
-```
-10:52:06  status New → In Progress
-10:52:08  Automation for Jira → Start date
-10:52:14  priority Low → High
-10:52:15  Automation for Jira → duedate
-```
-
-**BT-75719** — Priority written *first*, Status last. Start date set, **Due date never set**:
+- **BT-75657** — priority `Low`, and **never changed once** across a 29-entry history. Due date
+  landed anyway, 2.19 s after Story Points:
 
 ```
-07:36:45  priority Low → Medium     ← ticket still New; no Start date to compute from
-07:39:09  status New → In Progress
-07:39:11  Automation for Jira → Start date
-          (no duedate, ever)
+14:33:59.520  Diógenes      status New → In Progress
+14:34:01.954  Automation    Start date → 11/Sep/26            (+2.43 s)
+14:34:23.913  Diógenes      Story Points → 1
+14:34:26.100  Automation    duedate → 2026-09-12              (+2.19 s)
 ```
+  `Start date 09-11 + Story Points 1 = 09-12`.
 
-**BT-75732** — moved to `Under investigation` (111) instead. **Neither** date set, even though
-Priority, Process, Complexity and Story Points were all filled.
+- **BT-75495** — same shape, priority never touched: Story Points `3` → `duedate` 2.44 s later,
+  `09-10 + 3 = 09-13`. Complexity had been set 59 s earlier, so it is not the trigger either.
+
+- **Latency** — on BT-75738 the gap from the priority change to the Due date write was
+  **1.02 s**, faster than the same engine's own Start date write on the same ticket (2.39 s).
+  A rule cannot answer faster than its own engine; Story Points, 2.73 s earlier, is the trigger.
+
+### The arithmetic, checked across tickets
+
+`duedate = Start date + Story Points` calendar days:
+
+| Ticket | Start | SP | Due | |
+|---|---|---|---|---|
+| BT-75657 | 09-11 | 1 | 09-12 | ✓ |
+| BT-75501 | 09-09 | 1 | 09-10 | ✓ |
+| BT-75495 | 09-10 | 3 | 09-13 | ✓ |
+| BT-75422 | 09-03 | 1 | 09-04 | ✓ |
+| BT-75372 | 09-02 | 3 | 09-05 | ✓ |
+| BT-75355 | 09-01 | 1 | 09-02 | ✓ |
+| BT-75245 | 08-28 | 5 | 09-02 | ✓ |
+| BT-75117 | 08-28 | 6 | 09-03 | ✓ |
+
+Tickets where Story Points or Start date was edited *after* the write do not fit, as expected.
+
+### The failures, explained
+
+- **BT-75719** — Story Points set at 07:38:35, **34 s before** the transition at 07:39:09. Start
+  date did not exist yet, the rule was skipped, Story Points never moved again. Start date is
+  set; `duedate` is still null.
+- **BT-75732** — parked in `Under investigation` (111) with all four fields filled. That status
+  fires **neither** rule, so neither date exists.
 
 ### What follows
 
-- **Status before Priority.** A Priority change on a ticket with no Start date is wasted; the
-  Due date rule has nothing to compute from and does not retry later.
-- **`In Progress` (41) specifically.** `Under investigation` and the other working statuses do
-  not trigger the Start date rule.
-- **One field per call.** A single combined `editJiraIssue` presents the changes to Jira with no
-  ordering at all, which is the mechanism behind "every field is set but there are no dates".
-- **This deviates from the order circulated in Slack** (Priority → Process → Complexity → Story
-  Points → Status). That order is exactly what BT-75719 did, and BT-75719 has no Due date. The
-  content order is honoured; only Priority moves, to after the transition. If the requirement is
-  restated, bring these changelogs rather than re-arguing it.
+- **Story Points after the Status transition.** It is the only field whose position is forced.
+  Priority, Process and Complexity can sit wherever the team prefers.
+- **`In Progress` (41) specifically** for Start date. The other working statuses do not fire it.
+- **One field per call.** A combined `editJiraIssue` gives Jira no ordering at all.
+- **A Due date that is missing stays missing.** Re-setting Story Points to the same value may
+  not register as a change; if a ticket needs fixing after the fact, the reliable repair is to
+  set Start date by hand and then move Story Points to a different value and back.
 
-Sample size is three tickets — two positive, one negative — plus one null case. The timestamps
-are 1–9 s apart and the automation account is named in every entry, so the attribution is solid;
-the *exact* rule conditions are inferred and could be confirmed by whoever owns the automation.
+The order circulated in Slack puts Story Points at position 4 and Status at 5, which is exactly
+the BT-75719 sequence. Only Story Points needs to move.
+
+**What is not established:** the rule definitions themselves are not readable from this
+connector, so the triggers are inferred from authorship, latency and arithmetic across ten
+tickets rather than read from configuration. Priority being an additional, redundant trigger on
+the same rule has not been excluded — it is only proven to be neither necessary nor responsible
+for the writes observed. Whoever owns the two rules can close that gap in a minute.
 
 ---
 
