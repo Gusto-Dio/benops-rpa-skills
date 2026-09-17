@@ -305,9 +305,152 @@ even when it arrives as an angry escalation.
 
 ---
 
+## The write order, and the two automations it feeds
+
+Two `Automation for Jira` rules watch these fields. Neither rule definition is readable through
+this connector, so both were established from issue changelogs — the automation's own edits
+appear under the `Automation for Jira` app account, and the engine answers in a consistent
+**2.2–2.7 s**, which is what lets you tell trigger from coincidence.
+
+| Automation | Trigger | Writes |
+|---|---|---|
+| **Start date** | the transition **to `In Progress`** (id **41**) | `customfield_10015` = today, ~2.4 s later |
+| **Due date** | a change to **Story Points** (`customfield_10041`) | `duedate` = **Start date + Story Points days**, ~2.2–2.7 s later |
+
+**The Due date rule is skipped, silently, when Start date is empty — and it never retries.**
+Story Points does not change again on its own, so nothing fires it a second time. That is the
+whole failure mode: a ticket with every field filled and no Due date on it.
+
+### Priority is not the trigger
+
+It looks like one, because triage writes Priority and Story Points within seconds of each other.
+Three things rule it out:
+
+- **BT-75657** — priority `Low`, and **never changed once** across a 29-entry history. Due date
+  landed anyway, 2.19 s after Story Points:
+
+```
+14:33:59.520  Diógenes      status New → In Progress
+14:34:01.954  Automation    Start date → 11/Sep/26            (+2.43 s)
+14:34:23.913  Diógenes      Story Points → 1
+14:34:26.100  Automation    duedate → 2026-09-12              (+2.19 s)
+```
+  `Start date 09-11 + Story Points 1 = 09-12`.
+
+- **BT-75495** — same shape, priority never touched: Story Points `3` → `duedate` 2.44 s later,
+  `09-10 + 3 = 09-13`. Complexity had been set 59 s earlier, so it is not the trigger either.
+
+- **Latency** — on BT-75738 the gap from the priority change to the Due date write was
+  **1.02 s**, faster than the same engine's own Start date write on the same ticket (2.39 s).
+  A rule cannot answer faster than its own engine; Story Points, 2.73 s earlier, is the trigger.
+
+### The arithmetic, checked across tickets
+
+`duedate = Start date + Story Points` calendar days:
+
+| Ticket | Start | SP | Due | |
+|---|---|---|---|---|
+| BT-75657 | 09-11 | 1 | 09-12 | ✓ |
+| BT-75501 | 09-09 | 1 | 09-10 | ✓ |
+| BT-75495 | 09-10 | 3 | 09-13 | ✓ |
+| BT-75422 | 09-03 | 1 | 09-04 | ✓ |
+| BT-75372 | 09-02 | 3 | 09-05 | ✓ |
+| BT-75355 | 09-01 | 1 | 09-02 | ✓ |
+| BT-75245 | 08-28 | 5 | 09-02 | ✓ |
+| BT-75117 | 08-28 | 6 | 09-03 | ✓ |
+
+Tickets where Story Points or Start date was edited *after* the write do not fit, as expected.
+
+### The failures, explained
+
+- **BT-75719** — Story Points set at 07:38:35, **34 s before** the transition at 07:39:09. Start
+  date did not exist yet, the rule was skipped, Story Points never moved again. Start date is
+  set; `duedate` is still null.
+- **BT-75732** — parked in `Under investigation` (111) with all four fields filled. That status
+  fires **neither** rule, so neither date exists.
+
+### What the skill does with this
+
+**The team's order stands** — Priority, Process, Complexity, Story Points, Status, then
+Workaround Solutions and Category of Break. That was the skill owner's decision on 2026-09-17,
+after the mechanism above was put in front of him. Do not quietly reorder it.
+
+That order writes Story Points at position 4, before Start date exists, so the Due date rule is
+skipped on the first pass. The skill therefore **re-writes Story Points once after the
+transition** (step 8 of the workflow) to give the rule its trigger with Start date present, and
+reports honestly when the Due date still does not appear.
+
+- **`In Progress` (41) specifically** for Start date. The other working statuses do not fire it.
+- **One field per call.** A combined `editJiraIssue` gives Jira no ordering at all, which is the
+  mechanism behind "every field filled, no dates".
+- **A same-value write may not register as a change**, in which case the nudge does nothing.
+  There is no way to force the rule from outside. The reliable manual repair is to move Story
+  Points to a different value and back, with Start date already present.
+- **Never hand-write `duedate`.** A human-written date is indistinguishable from the
+  automation's in any report, and it conceals that the rule never ran.
+
+**The durable fix is on the rule side, not ours:** if the Due date rule set Start date itself
+when it is missing — or triggered on the transition as well as on Story Points — the ordering
+would stop mattering for everyone, including people filling tickets by hand in the UI. That is
+worth raising with whoever owns the two rules.
+
+**What is not established:** the rule definitions themselves are not readable from this
+connector, so the triggers are inferred from authorship, latency and arithmetic across ten
+tickets rather than read from configuration. Priority being an additional, redundant trigger on
+the same rule has not been excluded — it is only proven to be neither necessary nor responsible
+for the writes observed. Whoever owns the two rules can close that gap in a minute.
+
+---
+
+## Transitions
+
+Status is not a field edit. Use `transitionJiraIssue`, and pass the **transition** id, which is
+not the status id:
+
+```
+transitionJiraIssue(issueIdOrKey='BT-XXXXX', transition={"id": "41"})
+```
+
+All BT transitions are global, so any of these is reachable from any status. The ones that
+matter here:
+
+| Transition | Name | → status | Note |
+|---|---|---|---|
+| **41** | In Progress | `3` | the one that fires **Start date** |
+| 111 | Under investigation | `10171` | fires **nothing** — not a substitute |
+| 31 | New | `10033` | |
+| 21 | Ready for Development | `10178` | |
+| 181 | Ready for PR Review | `10080` | fires a separate `PR Review Date` automation |
+| 51 | Ready for Testing | `10195` | |
+| 121 | Awaiting Response From User | `10186` | |
+| 81 | On Hold | `10062` | |
+| 71 | **Done** | `10013` | see below — has validators |
+
+Re-read the list rather than trusting these ids if a transition is rejected:
+`getTransitionsForJiraIssue(issueIdOrKey=…, sortByOpsBarAndStatus=true)`.
+
+### Done (71) demands three fields this skill does not set
+
+The workflow rejects the transition outright — *"Please specify Complexity & Time Spent before
+closing"* and *"Field BizTech Issue Category is required"* — until all three are present.
+`/ticket-fields` sets Complexity but not the other two, so **it cannot close a ticket.**
+
+| Field | Id | Shape |
+|---|---|---|
+| Time Spent | `customfield_11296` | select — `0-5 min (False Positive)` 17823, `5-15 min` 17827, `15-30 min` 17829, `30-60 min` 17830, `60 min +` 17831 |
+| BizTech Issue Category | `customfield_11224` | **cascading** — `{"id": parent, "child": {"id": child}}`. Parents include Bug 17204, FAQ 17205, Enhancement 17206, Task 17211 |
+| Resolution | `resolution` | `{"id": "10000"}` = Done. 43 options exist, one of them literally `DO NOT USE` |
+
+Read the allowed values off the transition itself —
+`getTransitionsForJiraIssue(transitionId='71', expand='transitions.fields')`. The project's
+create-meta does **not** list them.
+
+---
+
 ## The write call
 
-One `editJiraIssue`, all eight fields:
+Write these **one field per call, in the order above**. The combined form below is kept only to
+document the per-field shapes — do not send it as one call:
 
 ```
 editJiraIssue(

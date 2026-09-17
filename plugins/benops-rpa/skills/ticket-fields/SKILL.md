@@ -1,10 +1,10 @@
 ---
 name: ticket-fields
-description: Use when starting work on, triaging, investigating, picking up, assigning, commenting on, or closing a BizTech support ticket (BT-xxxxx) — including before reading Orchestrator logs, before reading XAML, before opening a PR, and before moving a ticket to In Progress or Done. Also use when a ticket is missing Priority, Complexity, Process, Category of Break, Workaround Solutions, Story Points, Sprint, or Ticket Type, or when those fields need auditing across several tickets.
+description: Use when starting work on, triaging, investigating, picking up, assigning, commenting on, or closing a BizTech support ticket (BT-xxxxx) — including before reading Orchestrator logs, before reading XAML, before opening a PR, and before moving a ticket to In Progress or Done. Also use when a ticket is missing Priority, Complexity, Process, Category of Break, Workaround Solutions, Story Points, Sprint, or Ticket Type, when a ticket has no Start date or Due date, or when those fields need auditing across several tickets.
 argument-hint: <BT-key> [BT-key …]
 sdlc_phases: [operate]
 requires_mcp: [jiraconfluencegusto]
-allowed-tools: [mcp__claude_ai_Jira_Confluence__getJiraIssue, mcp__claude_ai_Jira_Confluence__editJiraIssue, mcp__claude_ai_Jira_Confluence__searchJiraIssuesUsingJql, mcp__claude_ai_Jira_Confluence__getJiraIssueTypeMetaWithFields, mcp__claude_ai_Jira_Confluence__addCommentToJiraIssue, mcp__claude_ai_Gsheets_Gusto__fetch, Read, AskUserQuestion, Skill]
+allowed-tools: [mcp__claude_ai_Jira_Confluence__getJiraIssue, mcp__claude_ai_Jira_Confluence__editJiraIssue, mcp__claude_ai_Jira_Confluence__searchJiraIssuesUsingJql, mcp__claude_ai_Jira_Confluence__getJiraIssueTypeMetaWithFields, mcp__claude_ai_Jira_Confluence__getTransitionsForJiraIssue, mcp__claude_ai_Jira_Confluence__transitionJiraIssue, mcp__claude_ai_Jira_Confluence__addCommentToJiraIssue, mcp__claude_ai_Gsheets_Gusto__fetch, Read, AskUserQuestion, Skill]
 ---
 
 # BT Ticket Fields
@@ -23,13 +23,17 @@ set before any investigation, and they are what makes the ticket findable afterw
 Core principle: **the fields are part of picking up the ticket, not part of closing it.**
 A ticket in progress with empty fields is invisible to every report the team runs.
 
+**The writes go one field at a time, in the team's stated order.** Two Jira automations key off
+these fields — one sets Start date, one sets Due date — so a single combined `editJiraIssue`,
+which gives Jira no ordering at all, is what leaves a ticket fully filled with no dates. See
+step 6 for the order and step 8 for the Due date repair.
+
 ## The Gate
 
 **Set the eight fields before doing anything else to a BT ticket.**
 
 Before pulling Orchestrator logs, before reading XAML, before proposing a fix, before opening
-a PR, before transitioning status — the fields go in first. They cost one Jira read and one
-Jira write.
+a PR — the fields go in first. They cost one Jira read and a short ordered sequence of writes.
 
 This applies when the ticket is already `In Progress`, when someone else is assigned, and
 when you were only asked "what's wrong with BT-75245". Answering a question about a ticket is
@@ -66,16 +70,61 @@ working on the ticket.
 
 5. **Show the eight values in a table and ask for confirmation** before writing. One
    `AskUserQuestion` or a plain yes/no — the user is accountable for these values, and
-   Priority in particular overrules the person who reported the issue.
+   Priority in particular overrules the person who reported the issue. Say in the same breath
+   which Status you are about to move the ticket to.
 
-6. **Write once, then verify with a focused read.** The `editJiraIssue` response echoes the
-   issue back but contains **none of the custom fields you just wrote** — it is not evidence.
+6. **Write in the order below, one call per step. Never batch them.**
+   Two Jira automations read these writes, and both are order-sensitive — the full evidence is
+   in `references/field-map.md` under *The write order*. A single combined `editJiraIssue`
+   gives Jira no order at all, which is how a ticket ends up with every field set and no dates.
+
+   This is the team's order, as circulated by the PM. Follow it.
+
+   | # | Write | Note |
+   |---|---|---|
+   | 1 | **Priority** | |
+   | 2 | **Process** | |
+   | 3 | **Complexity** | |
+   | 4 | **Story Points** | |
+   | 5 | **Status → `In Progress`** (transition **41**) | fires the **Start date** automation |
+   | 6 | **Sprint**, **Ticket Type?** | not in the stated order; safe here |
+   | 7 | **Workaround Solutions**, **Category of Break** | the team fills these last |
+
+   **Only transition a ticket you are actually picking up**, and only if it is not already in a
+   working status. `Under investigation` (111) does **not** fire either automation, so it is
+   not a substitute for `In Progress`.
+
+   **One consequence to expect, and repair.** The Due date automation triggers on a **Story
+   Points** change and writes `Start date + Story Points days`. In this order Story Points is
+   written at step 4, before Start date exists, so the rule is skipped — and it does not retry,
+   because Story Points never moves again on its own. Step 8 handles that.
+
+   Evidence for the mechanism is in `references/field-map.md` under *The write order*: BT-75719
+   wrote Story Points 34 s before the transition and has no Due date to this day, while BT-75657
+   and BT-75495 wrote it afterwards and both got one.
+
+7. **Verify with a focused read — including both dates.** The `editJiraIssue` response echoes
+   the issue back but contains **none of the custom fields you just wrote**; it is not evidence.
    Shape errors are atomic: Jira rejects every field and writes nothing, listing each problem
-   with its `expectedShape` in one `problems` array. Fix from that array rather than guessing
-   one field per retry. Then verify regardless — validation catches malformed values, never
-   wrong ones.
+   with its `expectedShape` in one `problems` array — fix from that array rather than guessing
+   one field per retry.
 
-7. **Report what was set and what was left.** Name any field you could not derive and say why.
+   Read back the eight **plus `customfield_10015` (Start date) and `duedate`**. The automations
+   land ~2.2–2.7 s after their trigger, so if a date is still empty, re-read once before
+   concluding it failed.
+
+8. **If Due date is empty, nudge Story Points once — then stop.** Start date now exists, so
+   re-writing Story Points gives the Due date rule its trigger with the input it needs. Write
+   the same value back and re-read.
+
+   If it is still empty after that, **say so plainly and name the cause** — Jira may not record
+   a same-value write as a change, and there is no way to force the rule from outside. Do not
+   invent a Due date by hand: a human-written `duedate` is indistinguishable from the
+   automation's in reports, and it hides the fact that the rule never fired.
+
+9. **Report what was set and what was left.** Name any field you could not derive and say why,
+   and state whether both dates landed. If Due date did not, that is worth mentioning out loud
+   rather than burying — it is the thing the order exists to produce.
 
 Then, and only then, continue to whatever was actually asked.
 
@@ -102,16 +151,24 @@ of blank.
 
 ## Quick Reference
 
-| Field | ID | Default when nothing else is known |
-|---|---|---|
-| Priority | `priority` | as stated by requester; else `Medium` if failing now |
-| Complexity | `customfield_10137` | `M` — cost to fix, not severity |
-| Process | `customfield_13519` | spans >1 family → `Benefits`; else from the bot name |
-| Category of Break | `customfield_17533` | one of the canonical five |
-| Workaround Solutions | `customfield_17536` | `None — cases will queue until the fix deploys` |
-| Story Points | `customfield_10041` | elapsed days open — `round(resolved − created)`, min 1 |
-| Sprint | `customfield_10020` | ticket open → active sprint id, always; `Done` → leave alone |
-| Ticket Type? | `customfield_10397` | `Support` if a regression, else `Enhancement` |
+Listed **in write order** — the order is part of the answer, not a table sort.
+
+| # | Field | ID | Default when nothing else is known |
+|---|---|---|---|
+| 1 | Priority | `priority` | as stated by requester; else `Medium` if failing now |
+| 2 | Process | `customfield_13519` | spans >1 family → `Benefits`; else from the bot name |
+| 3 | Complexity | `customfield_10137` | `M` — cost to fix, not severity |
+| 4 | Story Points | `customfield_10041` | elapsed days open — `round(resolved − created)`, min 1 |
+| 5 | **Status** | transition **41** → `In Progress` | only when picking the ticket up; fires **Start date** |
+| 6 | Sprint | `customfield_10020` | ticket open → active sprint id, always; `Done` → leave alone |
+| 6 | Ticket Type? | `customfield_10397` | `Support` if a regression, else `Enhancement` |
+| 7 | Workaround Solutions | `customfield_17536` | `None — cases will queue until the fix deploys` |
+| 7 | Category of Break | `customfield_17533` | one of the canonical five |
+| 8 | *(repair)* Story Points again | `customfield_10041` | only if `duedate` came back empty |
+
+Story Points does double duty: it is the team's record of how long the ticket was open **and**
+the number of days the Due date automation adds to Start date. Those agree by construction —
+one point per day — so the Due date is "started on X, expected to take N days".
 
 Canonical Category of Break, comma-separated when several apply:
 `Portal UI Changes` · `Process Logic Errors` · `Login Issues` · `INFRA ISSUE` · `Data Issues`
@@ -135,7 +192,11 @@ Canonical Category of Break, comma-separated when several apply:
 ## Red Flags — STOP
 
 - About to call `uip`, read a `.xaml`, or open a PR for a BT key whose fields you have not read
-- About to transition a ticket without having set the eight
+- About to put all the fields in **one** `editJiraIssue` call — that is the order bug
+- About to write a `duedate` by hand because the automation did not fire — it is
+  indistinguishable from the automation's in reports and hides that the rule never ran
+- About to use `Under investigation` (111) as the working status — it fires neither automation
+- About to call the write done without re-reading `customfield_10015` and `duedate`
 - About to write `Moderate`, `Difficult`, `Easy`, `Issue`, or `Request` into a select field
 - About to write a sprint **name** instead of a numeric id
 - About to move a `Done` ticket into the active sprint

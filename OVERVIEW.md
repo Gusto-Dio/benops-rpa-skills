@@ -193,6 +193,42 @@ Claude derives all eight, **shows you a table, and waits for confirmation before
 are accountable for these values — in particular Priority, where writing a value overrules the
 person who reported the issue. Check the table rather than waving it through.
 
+### The order it writes in, and why it matters
+
+Two Jira automations key off these fields, so the skill writes **one field at a time, in a fixed
+order** rather than all at once:
+
+1. Priority → 2. Process → 3. Complexity → 4. Story Points
+5. **Status → `In Progress`** — this is what sets the **Start date**
+6. Sprint, Ticket Type? → 7. Workaround Solutions, Category of Break
+
+This is the order circulated by the PM, and the skill follows it.
+
+**One thing to know about Due date.** It comes from a second automation that triggers on a
+**Story Points** change and writes `Start date + Story Points days`. Start date only exists once
+the ticket reaches `In Progress`, so in this order Story Points is written before Start date
+exists and the rule is skipped — and it does not retry, because Story Points never moves again
+on its own.
+
+The skill handles that by **re-writing Story Points once after the transition** and then telling
+you whether the Due date landed. If it did not, it says so rather than filling the date in by
+hand — a hand-written Due date looks identical to the automation's in every report.
+
+The same applies when you fill a ticket in the Jira UI: if you set Story Points before moving
+the ticket to `In Progress`, nudge Story Points again afterwards. And `Under investigation` is
+not a substitute for `In Progress` — it fires neither automation.
+
+The changelogs behind all of this are in
+`skills/ticket-fields/references/field-map.md` under *The write order*.
+
+Two related gotchas worth knowing by hand:
+
+- **`Under investigation` is not a substitute for `In Progress`.** It fires neither automation,
+  so a ticket parked there never gets dates.
+- After the writes, the skill re-reads the eight **plus both dates** and tells you whether they
+  landed. The automations take 1–9 seconds, so "not there yet" and "did not fire" look the same
+  for a moment.
+
 ### What each field means here
 
 | Field | Rule |

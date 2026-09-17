@@ -1,7 +1,7 @@
 {
   "name": "benops-rpa",
   "description": "Claude Code skills for the BenOps RPA team at Gusto",
-  "version": "1.5.0",
+  "version": "1.5.1",
   "pages": {
     "icon": "#",
     "features": [
@@ -56,7 +56,7 @@
       {
         "type": "skill",
         "name": "ticket-fields",
-        "description": "Fill the eight reportable fields on a BT support ticket — Priority, Complexity, Process, Category of Break, Workaround Solutions, Story Points, Sprint, Ticket Type",
+        "description": "Fill the eight reportable fields on a BT support ticket in the team's order — Priority, Process, Complexity, Story Points, Status, then Sprint, Ticket Type, Workaround Solutions and Category of Break — with a Due date repair pass",
         "mcp": []
       },
       {
